@@ -1,6 +1,5 @@
 """
-Enhanced wallet tracking for the Solana pump.fun sniping bot.
-Monitors specific wallets for transactions on pump.fun, Raydium, and other DEXs.
+Enhanced wallet tracking with improved timing and detection speed.
 """
 # File Location: src/monitoring/wallet_tracker.py
 
@@ -23,7 +22,7 @@ logger = get_logger("wallet_tracker")
 
 class EnhancedWalletTracker:
     """
-    Enhanced wallet tracker with robust monitoring for pump.fun and DEX transactions.
+    Enhanced wallet tracker with faster polling for pump.fun and DEX transactions.
     """
     
     def __init__(self):
@@ -46,6 +45,9 @@ class EnhancedWalletTracker:
         self.monitoring_tasks: List[asyncio.Task] = []
         self.monitoring_active = False
         
+        # IMPROVED: Faster polling interval (0.5 seconds)
+        self.POLL_INTERVAL = 0.5
+        
         # Statistics
         self.stats = {
             "transactions_detected": 0,
@@ -54,10 +56,14 @@ class EnhancedWalletTracker:
             "dex_swaps_detected": 0,
             "errors": 0,
             "checks_performed": 0,
-            "last_check": time.time()
+            "last_check": time.time(),
+            "last_detection_time": 0,
+            "average_detection_delay": 0,
+            "detection_delays": []
         }
         
         logger.info(f"WalletTracker initialized - tracking {len(self.tracked_wallets)} wallet(s)")
+        logger.info(f"Polling interval: {self.POLL_INTERVAL}s for faster detection")
         
     async def start(self) -> None:
         """Start tracking specified wallets for transactions."""
@@ -97,21 +103,28 @@ class EnhancedWalletTracker:
         logger.info("Wallet tracker stopped")
     
     async def _monitor_wallet(self, wallet_address: str) -> None:
-        """Monitor a wallet for transactions."""
-        logger.info(f"Starting to monitor wallet: {wallet_address}")
+        """Monitor a wallet for transactions with fast polling."""
+        logger.info(f"Starting fast monitoring for wallet: {wallet_address}")
+        
+        consecutive_errors = 0
         
         while self.running:
             try:
                 await self._check_wallet_transactions(wallet_address)
                 self.stats["checks_performed"] += 1
-                await asyncio.sleep(1)  # Check every second
+                consecutive_errors = 0  # Reset on success
+                await asyncio.sleep(self.POLL_INTERVAL)  # Fast polling
                 
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                consecutive_errors += 1
                 logger.error(f"Error monitoring wallet {wallet_address}: {e}")
                 self.stats["errors"] += 1
-                await asyncio.sleep(5)
+                
+                # Exponential backoff on errors
+                wait_time = min(self.POLL_INTERVAL * (2 ** consecutive_errors), 10)
+                await asyncio.sleep(wait_time)
     
     async def _check_wallet_transactions(self, wallet_address: str) -> None:
         """Check recent transactions for a wallet."""
@@ -120,10 +133,10 @@ class EnhancedWalletTracker:
             if not client:
                 return
             
-            # Get recent signatures
+            # Get recent signatures (check last 3 for faster detection)
             response = await client.get_signatures_for_address(
                 PublicKey.from_string(wallet_address),
-                limit=5
+                limit=3  # Reduced for faster processing
             )
             
             if not response or not response.value:
@@ -136,8 +149,19 @@ class EnhancedWalletTracker:
                 if signature in self.processed_signatures:
                     continue
                 
-                # Mark as processed
+                # Mark as processed immediately
                 self.processed_signatures.add(signature)
+                
+                # Calculate detection delay
+                if sig_info.block_time:
+                    detection_delay = time.time() - sig_info.block_time
+                    self.stats["detection_delays"].append(detection_delay)
+                    # Keep only last 100 delays
+                    if len(self.stats["detection_delays"]) > 100:
+                        self.stats["detection_delays"].pop(0)
+                    self.stats["average_detection_delay"] = sum(self.stats["detection_delays"]) / len(self.stats["detection_delays"])
+                    
+                    logger.info(f"[TIMING] Transaction detected {detection_delay:.2f}s after block time")
                 
                 # Fetch transaction details
                 tx_response = await client.get_transaction(
@@ -183,6 +207,7 @@ class EnhancedWalletTracker:
             
             # Log the DEX transaction
             self.stats["transactions_detected"] += 1
+            self.stats["last_detection_time"] = time.time()
             
             for prog_id in program_ids_in_tx:
                 prog_name = next((name for name, id in self.program_ids.items() if id == prog_id), prog_id)
@@ -204,22 +229,28 @@ class EnhancedWalletTracker:
                     f"Wallet: {wallet_address[:8]}... | "
                     f"Token: {token_address[:16]}... | "
                     f"Amount: {amount_sol:.6f} SOL | "
-                    f"TX: {signature[:32]}..."
+                    f"TX: {signature[:32]}... | "
+                    f"Avg Detection Delay: {self.stats['average_detection_delay']:.2f}s"
                 )
                 
-                # Trigger callbacks
-                for callback in self.buy_callbacks:
-                    try:
-                        if asyncio.iscoroutinefunction(callback):
-                            await callback(wallet_address, token_address, amount_sol)
-                        else:
-                            callback(wallet_address, token_address, amount_sol)
-                    except Exception as e:
-                        logger.error(f"Error in buy callback: {e}")
+                # Trigger callbacks immediately
+                await self._trigger_buy_callbacks(wallet_address, token_address, amount_sol)
                         
         except Exception as e:
             logger.error(f"Error analyzing transaction: {e}")
             self.stats["errors"] += 1
+    
+    async def _trigger_buy_callbacks(self, wallet_address: str, token_address: str, amount_sol: float):
+        """Trigger buy callbacks asynchronously for speed."""
+        for callback in self.buy_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    # Don't await - run in background for speed
+                    asyncio.create_task(callback(wallet_address, token_address, amount_sol))
+                else:
+                    callback(wallet_address, token_address, amount_sol)
+            except Exception as e:
+                logger.error(f"Error in buy callback: {e}")
     
     def _extract_swap_info(self, instructions: List[Dict], logs: List[str], 
                           program_ids: Set[str]) -> Optional[Dict[str, Any]]:
@@ -237,34 +268,53 @@ class EnhancedWalletTracker:
                     dex_name = next(name for name, id in self.program_ids.items() if id == prog_id)
                     break
             
-            # Parse logs for swap details
+            # Parse logs for swap details - improved detection
+            logs_str = " ".join(logs).lower()
+            
+            # Detect buy operations with more patterns
+            buy_patterns = [
+                "buy", "swap executed", "buyexactin", "buy_exact_in",
+                "swap sol for", "swapping sol to", "purchasing"
+            ]
+            
+            if any(pattern in logs_str for pattern in buy_patterns):
+                is_buy = True
+            
+            # Extract amounts from logs
             for log in logs:
-                log_lower = log.lower()
-                
-                # Detect buy operations
-                if any(buy_indicator in log_lower for buy_indicator in 
-                      ["buy", "swap executed", "buyexactin", "buy_exact_in"]):
-                    is_buy = True
-                
-                # Extract amounts
-                if "amount_in:" in log:
+                # Look for various amount patterns
+                if any(keyword in log.lower() for keyword in ["amount_in:", "input_amount:", "sol_amount:"]):
                     try:
-                        amount_str = log.split("amount_in:")[1].strip().split()[0].replace(",", "")
-                        amount_sol = float(amount_str) / 1e9  # Convert lamports to SOL
+                        # Extract numeric value
+                        parts = log.split(":")
+                        if len(parts) > 1:
+                            amount_str = parts[-1].strip().split()[0].replace(",", "")
+                            # Handle both raw lamports and formatted SOL
+                            if "." in amount_str:
+                                amount_sol = float(amount_str)
+                            else:
+                                amount_sol = float(amount_str) / 1e9
                     except:
                         pass
             
-            # Extract token address from instructions
+            # Extract token address from instructions with improved logic
             for instruction in instructions:
                 accounts = instruction.get("accounts", [])
-                if len(accounts) >= 5:
-                    # Common pattern: destination mint at index 4 for buys
-                    potential_token = accounts[4] if isinstance(accounts[4], str) else None
-                    if potential_token and potential_token != "So11111111111111111111111111111111111111112":
-                        token_address = potential_token
-                        break
+                # Check different account positions based on DEX
+                if dex_name == "Raydium Launchpad" and len(accounts) >= 6:
+                    # For Raydium, token mint is often at position 5
+                    potential_token = accounts[5] if isinstance(accounts[5], str) else None
+                elif len(accounts) >= 4:
+                    # Common pattern: check accounts 2-4 for token mint
+                    for idx in [2, 3, 4]:
+                        if idx < len(accounts) and isinstance(accounts[idx], str):
+                            potential_token = accounts[idx]
+                            # Skip SOL mint
+                            if potential_token != "So11111111111111111111111111111111111111112":
+                                token_address = potential_token
+                                break
             
-            if is_buy and amount_sol > 0:
+            if is_buy and (amount_sol > 0 or token_address != "Unknown"):
                 return {
                     "is_buy": True,
                     "token_address": token_address,
@@ -282,12 +332,14 @@ class EnhancedWalletTracker:
         while self.running:
             await asyncio.sleep(30)  # Every 30 seconds
             
+            avg_delay = self.stats['average_detection_delay']
             logger.info(
                 f"📊 STATS | Checks: {self.stats['checks_performed']} | "
                 f"TX: {self.stats['transactions_detected']} | "
                 f"Buys: {self.stats['buys_detected']} | "
                 f"DEX Swaps: {self.stats['dex_swaps_detected']} | "
-                f"Errors: {self.stats['errors']}"
+                f"Errors: {self.stats['errors']} | "
+                f"Avg Detection Delay: {avg_delay:.2f}s"
             )
     
     def register_buy_callback(self, callback: Callable[[str, str, float], None]) -> None:

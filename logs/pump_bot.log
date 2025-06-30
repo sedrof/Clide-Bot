@@ -302,3 +302,46 @@
 2025-06-30 14:52:54 - main - INFO - ✓ Connection Manager stopped
 2025-06-30 14:52:54 - main - INFO - Bot stopped successfully
 2025-06-30 14:52:54 - main - INFO - ============================================================
+2025-06-30 10:16:04 - root - INFO - Logging initialized - Level: INFO, File: C:\Users\JJ\Desktop\Clide-Bot\logs\pump_bot.log
+2025-06-30 10:16:05 - main - INFO - ============================================================
+2025-06-30 10:16:05 - main - INFO - Starting Solana pump.fun sniping bot
+2025-06-30 10:16:05 - main - INFO - ============================================================
+2025-06-30 10:16:05 - config - INFO - Loaded settings from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\settings.json
+2025-06-30 10:16:05 - config - INFO - Loaded wallet data from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\wallet.json
+2025-06-30 10:16:05 - config - INFO - Loaded sell strategy from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\sell_strategy.yaml
+2025-06-30 10:16:05 - config - INFO - All configurations loaded successfully
+2025-06-30 10:16:05 - main - INFO - Configurations loaded successfully
+2025-06-30 10:16:05 - main - INFO - Initializing components...
+2025-06-30 10:16:05 - main - INFO - ✓ Strategy engine initialized
+2025-06-30 10:16:05 - main - INFO - ✓ Transaction builder initialized
+2025-06-30 10:16:06 - connection - INFO - Connection manager initialized with 1 RPC endpoints
+2025-06-30 10:16:07 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 10:16:08 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 10:16:08 - connection - INFO - Connected to RPC endpoint: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE
+2025-06-30 10:16:08 - main - INFO - ✓ Connection manager initialized
+2025-06-30 10:16:08 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 10:16:08 - wallet - INFO - Keypair loaded successfully | public_key=4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2
+2025-06-30 10:16:08 - wallet - INFO - Wallet manager initialized | public_key=4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2
+2025-06-30 10:16:08 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 10:16:09 - main - INFO - ✓ Wallet initialized. Balance: 0.002841 SOL
+2025-06-30 10:16:09 - wallet_tracker - INFO - WalletTracker initialized - tracking 1 wallet(s)
+2025-06-30 10:16:09 - wallet_tracker - INFO - Polling interval: 0.5s for faster detection
+2025-06-30 10:16:09 - main - INFO - ✓ Monitoring components initialized
+2025-06-30 10:16:09 - event_processor - INFO - Event processor instance created
+2025-06-30 10:16:09 - main - INFO - ✓ Event processor initialized
+2025-06-30 10:16:09 - main - ERROR - Error starting bot: unsupported operand type(s) for +: 'Align' and 'str' | exc_info=True | error_count=1
+Traceback (most recent call last):
+  File "C:\Users\JJ\Desktop\Clide-Bot\src\main.py", line 92, in start_bot
+    bot_cli = initialize_bot_cli()
+  File "C:\Users\JJ\Desktop\Clide-Bot\src\ui\cli.py", line 612, in initialize_bot_cli
+    bot_cli = BotCLI()
+  File "C:\Users\JJ\Desktop\Clide-Bot\src\ui\cli.py", line 79, in __init__
+    self._setup_layout()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\JJ\Desktop\Clide-Bot\src\ui\cli.py", line 91, in _setup_layout
+    self._update_header()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\JJ\Desktop\Clide-Bot\src\ui\cli.py", line 134, in _update_header
+    header_content = Align.center(title_text) + "\n" + Align.center(status_text)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~
+TypeError: unsupported operand type(s) for +: 'Align' and 'str'

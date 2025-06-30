@@ -1,7 +1,6 @@
 """
 Trading strategy engine for the Solana pump.fun sniping bot.
-Evaluates events and market conditions to make trading decisions.
-Includes copy trading functionality for tracked wallets.
+Fixed version with correct balance calculations.
 """
 # File Location: src/trading/strategy_engine.py
 
@@ -38,6 +37,9 @@ class StrategyEngine:
         self.total_trades = 0
         self.successful_trades = 0
         self.failed_trades = 0
+        
+        # FIXED: Reasonable fee reserve
+        self.MIN_FEE_RESERVE = 0.001  # 0.001 SOL for transaction fees
         
     async def start(self) -> None:
         """Start the strategy engine."""
@@ -251,11 +253,15 @@ class StrategyEngine:
             # Calculate buy amount (could be dynamic based on strategy)
             buy_amount_sol = min(self.max_buy_amount_sol, 0.1)  # Start with small amounts
             
-            # Check wallet balance
+            # Check wallet balance (FIXED calculation)
             balance = await wallet_manager.get_balance()
-            if balance < buy_amount_sol + 0.01:  # Keep some SOL for fees
+            required_balance = buy_amount_sol + self.MIN_FEE_RESERVE
+            
+            if balance < required_balance:
                 logger.warning(
-                    f"Insufficient balance for buy. Required: {buy_amount_sol:.4f} SOL, Available: {balance:.4f} SOL",
+                    f"Insufficient balance for buy. Required: {required_balance:.4f} SOL "
+                    f"({buy_amount_sol:.4f} + {self.MIN_FEE_RESERVE:.4f} fees), "
+                    f"Available: {balance:.4f} SOL",
                     token=token_info.address
                 )
                 return False
@@ -398,12 +404,15 @@ class StrategyEngine:
             # Determine buy amount (use configured max or match tracked wallet, whichever is less)
             buy_amount = min(amount_sol, self.max_buy_amount_sol)
             
-            # Check wallet balance
+            # FIXED: Check wallet balance with correct calculation
             balance = await wallet_manager.get_balance()
-            if balance < buy_amount + 0.01:  # Keep 0.01 SOL for fees
+            required_balance = buy_amount + self.MIN_FEE_RESERVE
+            
+            if balance < required_balance:
                 logger.warning(
                     f"Insufficient balance for copy trade. "
-                    f"Required: {buy_amount:.4f} SOL, Available: {balance:.4f} SOL"
+                    f"Required: {required_balance:.4f} SOL ({buy_amount:.4f} + {self.MIN_FEE_RESERVE:.4f} fees), "
+                    f"Available: {balance:.4f} SOL"
                 )
                 return
             
