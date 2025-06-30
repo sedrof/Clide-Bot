@@ -16,8 +16,6 @@ import structlog
 
 from src.utils.config import config_manager, WalletConfig
 from src.utils.logger import get_logger
-from src.core.connection_manager import connection_manager
-
 
 logger = get_logger("wallet")
 
@@ -33,11 +31,9 @@ class WalletManager:
         self._last_balance_check: float = 0
         self.balance_cache_duration = 5.0  # Cache balance for 5 seconds
         
-    async def initialize(self) -> None:
+    async def initialize(self, client: AsyncClient) -> None:
         """Initialize wallet manager with RPC client and load keypair."""
-        self.client = await connection_manager.get_rpc_client()
-        if not self.client:
-            raise RuntimeError("No RPC client available from connection manager")
+        self.client = client
         await self.load_keypair()
         logger.info("Wallet manager initialized", public_key=str(self.public_key))
     
