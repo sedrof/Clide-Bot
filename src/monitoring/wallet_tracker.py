@@ -280,20 +280,33 @@ class EnhancedWalletTracker:
             if any(pattern in logs_str for pattern in buy_patterns):
                 is_buy = True
             
-            # Extract amounts from logs
+            # Extract amounts from logs and instruction data
             for log in logs:
-                # Look for various amount patterns
-                if any(keyword in log.lower() for keyword in ["amount_in:", "input_amount:", "sol_amount:"]):
+                log_lower = log.lower()
+                
+                # Look for amount patterns in logs
+                if "inputamount" in log_lower or "amount_in" in log_lower or "amountin" in log_lower:
                     try:
-                        # Extract numeric value
-                        parts = log.split(":")
-                        if len(parts) > 1:
-                            amount_str = parts[-1].strip().split()[0].replace(",", "")
-                            # Handle both raw lamports and formatted SOL
-                            if "." in amount_str:
-                                amount_sol = float(amount_str)
-                            else:
-                                amount_sol = float(amount_str) / 1e9
+                        # Extract numeric value using various patterns
+                        import re
+                        # Match patterns like "inputAmount": "99150" or amount_in: 99150
+                        matches = re.findall(r'(?:inputamount|amount_in|amountin)["\s:]+(\d+)', log_lower)
+                        if matches:
+                            amount_lamports = float(matches[0])
+                            amount_sol = amount_lamports / 1e9
+                            logger.debug(f"[PARSE] Extracted amount from logs: {amount_sol:.6f} SOL")
+                    except Exception as e:
+                        logger.debug(f"[PARSE] Failed to extract amount from log: {e}")
+                
+                # Also check for Jupiter swap event patterns
+                if "swapevent" in log_lower and amount_sol == 0:
+                    try:
+                        # Jupiter logs the actual input amount
+                        matches = re.findall(r'"inputamount"[:\s]*"?(\d+)"?', log_lower)
+                        if matches:
+                            amount_lamports = float(matches[0])
+                            amount_sol = amount_lamports / 1e9
+                            logger.debug(f"[PARSE] Extracted Jupiter swap amount: {amount_sol:.6f} SOL")
                     except:
                         pass
             
