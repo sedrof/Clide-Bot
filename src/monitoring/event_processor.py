@@ -1,30 +1,41 @@
 """
 Event processor for the Solana pump.fun sniping bot.
-Coordinates events from monitoring components and routes them to the strategy engine.
+Coordinates monitoring components and triggers strategy actions.
 """
 # File Location: src/monitoring/event_processor.py
 
 import asyncio
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
+import time
+
+from src.utils.config import config_manager
 from src.utils.logger import get_logger
+from src.monitoring.pump_monitor import pump_monitor, TokenInfo
+from src.monitoring.price_tracker import price_tracker
+from src.monitoring.volume_analyzer import volume_analyzer
+from src.monitoring.wallet_tracker import wallet_tracker
 
 logger = get_logger("event_processor")
 
 
 class EventProcessor:
-    """Processes events from various monitoring components and routes them to strategy engine."""
+    """Coordinates monitoring components and processes events."""
     
     def __init__(self):
-        self.running = False
-        self.new_token_queue = asyncio.Queue()
-        self.price_update_queue = asyncio.Queue()
-        self.volume_spike_queue = asyncio.Queue()
-        self.buy_queue = asyncio.Queue()
-        self.sell_queue = asyncio.Queue()
-        self.create_queue = asyncio.Queue()
+        self.settings = config_manager.get_settings()
+        self.running: bool = False
         
-    async def start(self):
-        """Start the event processor."""
+        # Event callbacks
+        self.new_token_callbacks: List[Callable[[TokenInfo], None]] = []
+        self.price_update_callbacks: List[Callable[[str, float, float], None]] = []
+        self.volume_spike_callbacks: List[Callable[[str, float], None]] = []
+        
+        # Event tracking
+        self.events_processed = 0
+        self.last_event_time = time.time()
+        
+    async def start(self) -> None:
+        """Start the event processor and register strategy callbacks."""
         if self.running:
             logger.warning("Event processor already running")
             return
@@ -32,160 +43,150 @@ class EventProcessor:
         self.running = True
         logger.info("Starting event processor")
         
+        # Register strategy engine with wallet tracker for copy trading
+        # Import here to avoid circular import
+        from src.trading.strategy_engine import strategy_engine
+        
+        if strategy_engine and wallet_tracker:
+            strategy_engine.register_with_wallet_tracker()
+            logger.info("Registered strategy engine with wallet tracker for copy trading")
+        
         # Register callbacks with monitoring components
-        await self._register_callbacks()
+        self._register_monitor_callbacks()
         
-        # Start processing events
+        # Start event processing loop
         asyncio.create_task(self._process_events())
-        
-    async def stop(self):
+    
+    async def stop(self) -> None:
         """Stop the event processor."""
         self.running = False
         logger.info("Stopping event processor")
     
-    async def _register_callbacks(self) -> None:
+    def _register_monitor_callbacks(self) -> None:
         """Register callbacks with monitoring components."""
-        try:
-            # Import components here to avoid circular imports
-            from src.monitoring.pump_monitor import pump_monitor
-            from src.monitoring.price_tracker import price_tracker
-            from src.monitoring.volume_analyzer import volume_analyzer
-            from src.monitoring.wallet_tracker import wallet_tracker
-            
-            # Register callback for new token detection
-            if pump_monitor:
-                pump_monitor.register_new_token_callback(self._on_new_token)
-                logger.info("Registered new token callback with pump monitor")
-            else:
-                logger.warning("Pump monitor not available for callback registration")
-            
-            # Register callback for price updates
-            if price_tracker:
-                price_tracker.register_price_update_callback(self._on_price_update)
-                logger.info("Registered price update callback with price tracker")
-            else:
-                logger.warning("Price tracker not available for callback registration")
-            
-            # Register callback for volume spikes
-            if volume_analyzer:
-                volume_analyzer.register_volume_spike_callback(self._on_volume_spike)
-                logger.info("Registered volume spike callback with volume analyzer")
-            else:
-                logger.warning("Volume analyzer not available for callback registration")
-            
-            # Register callback for wallet buy events
-            if wallet_tracker:
-                wallet_tracker.register_buy_callback(self._on_wallet_buy)
-                logger.info("Registered wallet buy callback with wallet tracker")
-            else:
-                logger.warning("Wallet tracker not available for callback registration")
-                
-        except Exception as e:
-            logger.error(f"Error registering callbacks: {str(e)}", exc_info=True)
-    
-    async def _on_new_token(self, token_info: Any) -> None:
-        """Callback for new token detection."""
-        await self.new_token_queue.put(token_info)
-        logger.info(f"New token detected: {token_info.symbol}", token=token_info.address)
-    
-    async def _on_price_update(self, token_address: str, price: float, price_change_percent: float) -> None:
-        """Callback for price updates."""
-        await self.price_update_queue.put({
-            "token_address": token_address,
-            "price": price,
-            "price_change_percent": price_change_percent
-        })
-        logger.debug(f"Price update for {token_address[:8]}...: {price:.8f} ({price_change_percent:.2f}%)")
-    
-    async def _on_volume_spike(self, token_address: str, volume: float, volume_change_percent: float) -> None:
-        """Callback for volume spikes."""
-        await self.volume_spike_queue.put({
-            "token_address": token_address,
-            "volume": volume,
-            "volume_change_percent": volume_change_percent
-        })
-        logger.info(f"Volume spike detected for {token_address[:8]}...: {volume:.2f} ({volume_change_percent:.2f}%)")
-    
-    def _on_wallet_buy(self, wallet_address: str, token_address: str, amount_sol: float) -> None:
-        """Callback for wallet buy transactions - synchronous version."""
-        # Create async task to handle the queue operation
-        asyncio.create_task(self._async_on_wallet_buy(wallet_address, token_address, amount_sol))
-    
-    async def _async_on_wallet_buy(self, wallet_address: str, token_address: str, amount_sol: float) -> None:
-        """Async handler for wallet buy transactions."""
-        await self.buy_queue.put({
-            "wallet_address": wallet_address,
-            "token_address": token_address,
-            "amount_sol": amount_sol
-        })
-        logger.info(f"Wallet buy detected: {wallet_address[:8]}... bought {token_address[:8]}... for {amount_sol:.2f} SOL")
+        # Register with pump monitor for new tokens
+        if pump_monitor:
+            pump_monitor.register_new_token_callback(self._handle_new_token)
+            logger.info("Registered new token callback with pump monitor")
+        
+        # Register with price tracker for price updates
+        if price_tracker:
+            price_tracker.register_price_update_callback(self._handle_price_update)
+            logger.info("Registered price update callback with price tracker")
+        
+        # Register with volume analyzer for volume spikes
+        if volume_analyzer:
+            volume_analyzer.register_volume_spike_callback(self._handle_volume_spike)
+            logger.info("Registered volume spike callback with volume analyzer")
     
     async def _process_events(self) -> None:
-        """Process events from various queues and route to strategy engine."""
-        # Import strategy engine here to avoid circular imports
-        from src.trading.strategy_engine import strategy_engine
-        
+        """Main event processing loop."""
         while self.running:
             try:
-                # Process new token events
-                if not self.new_token_queue.empty():
-                    token_info = await self.new_token_queue.get()
-                    if strategy_engine:
-                        await strategy_engine.evaluate_new_token(token_info)
-                    self.new_token_queue.task_done()
+                # Log status periodically
+                if time.time() - self.last_event_time > 60:  # Every minute
+                    logger.info(f"Event processor status: {self.events_processed} events processed")
+                    self.last_event_time = time.time()
                 
-                # Process price update events
-                if not self.price_update_queue.empty():
-                    price_data = await self.price_update_queue.get()
-                    if strategy_engine:
-                        await strategy_engine.evaluate_price_update(
-                            price_data["token_address"],
-                            price_data["price"],
-                            price_data["price_change_percent"]
-                        )
-                    self.price_update_queue.task_done()
-                
-                # Process volume spike events
-                if not self.volume_spike_queue.empty():
-                    volume_data = await self.volume_spike_queue.get()
-                    if strategy_engine:
-                        await strategy_engine.evaluate_volume_spike(
-                            volume_data["token_address"],
-                            volume_data["volume"],
-                            volume_data["volume_change_percent"]
-                        )
-                    self.volume_spike_queue.task_done()
-                
-                # Process wallet buy events
-                if not self.buy_queue.empty():
-                    buy_data = await self.buy_queue.get()
-                    if strategy_engine:
-                        await strategy_engine.evaluate_wallet_buy(
-                            buy_data["wallet_address"],
-                            buy_data["token_address"],
-                            buy_data["amount_sol"]
-                        )
-                    self.buy_queue.task_done()
-                
-                # Process sell events if implemented
-                if not self.sell_queue.empty():
-                    sell_data = await self.sell_queue.get()
-                    logger.info(f"Processing sell event: {sell_data}")
-                    # Add logic to handle sell events if needed
-                    self.sell_queue.task_done()
-                
-                # Process create events if implemented
-                if not self.create_queue.empty():
-                    create_data = await self.create_queue.get()
-                    logger.info(f"Processing create event: {create_data}")
-                    # Add logic to handle create events if needed
-                    self.create_queue.task_done()
-                
-                await asyncio.sleep(0.1)  # Prevent tight CPU loop
+                await asyncio.sleep(1)
                 
             except Exception as e:
-                logger.error(f"Error processing events: {str(e)}", exc_info=True)
-                await asyncio.sleep(1)  # Wait before retrying on error
+                logger.error(f"Error in event processing loop: {e}", exc_info=True)
+                await asyncio.sleep(5)
+    
+    async def _handle_new_token(self, token_info: TokenInfo) -> None:
+        """Handle new token detection."""
+        try:
+            logger.info(
+                f"Processing new token event: {token_info.symbol} ({token_info.address[:8]}...)",
+                token=token_info.address
+            )
+            
+            self.events_processed += 1
+            
+            # Notify all registered callbacks
+            for callback in self.new_token_callbacks:
+                try:
+                    if asyncio.iscoroutinefunction(callback):
+                        await callback(token_info)
+                    else:
+                        callback(token_info)
+                except Exception as e:
+                    logger.error(f"Error in new token callback: {e}", exc_info=True)
+                    
+        except Exception as e:
+            logger.error(f"Error handling new token event: {e}", exc_info=True)
+    
+    async def _handle_price_update(self, token_address: str, price: float, price_change_percent: float) -> None:
+        """Handle price update event."""
+        try:
+            logger.debug(
+                f"Processing price update: {token_address[:8]}... = {price:.6f} SOL ({price_change_percent:+.2f}%)",
+                token=token_address
+            )
+            
+            self.events_processed += 1
+            
+            # Notify all registered callbacks
+            for callback in self.price_update_callbacks:
+                try:
+                    if asyncio.iscoroutinefunction(callback):
+                        await callback(token_address, price, price_change_percent)
+                    else:
+                        callback(token_address, price, price_change_percent)
+                except Exception as e:
+                    logger.error(f"Error in price update callback: {e}", exc_info=True)
+                    
+        except Exception as e:
+            logger.error(f"Error handling price update event: {e}", exc_info=True)
+    
+    async def _handle_volume_spike(self, token_address: str, volume_spike_ratio: float) -> None:
+        """Handle volume spike event."""
+        try:
+            logger.info(
+                f"Processing volume spike: {token_address[:8]}... spike ratio = {volume_spike_ratio:.2f}x",
+                token=token_address
+            )
+            
+            self.events_processed += 1
+            
+            # Notify all registered callbacks
+            for callback in self.volume_spike_callbacks:
+                try:
+                    if asyncio.iscoroutinefunction(callback):
+                        await callback(token_address, volume_spike_ratio)
+                    else:
+                        callback(token_address, volume_spike_ratio)
+                except Exception as e:
+                    logger.error(f"Error in volume spike callback: {e}", exc_info=True)
+                    
+        except Exception as e:
+            logger.error(f"Error handling volume spike event: {e}", exc_info=True)
+    
+    def register_new_token_callback(self, callback: Callable[[TokenInfo], None]) -> None:
+        """Register callback for new token events."""
+        self.new_token_callbacks.append(callback)
+        logger.info(f"Registered new token callback. Total: {len(self.new_token_callbacks)}")
+    
+    def register_price_update_callback(self, callback: Callable[[str, float, float], None]) -> None:
+        """Register callback for price update events."""
+        self.price_update_callbacks.append(callback)
+        logger.info(f"Registered price update callback. Total: {len(self.price_update_callbacks)}")
+    
+    def register_volume_spike_callback(self, callback: Callable[[str, float], None]) -> None:
+        """Register callback for volume spike events."""
+        self.volume_spike_callbacks.append(callback)
+        logger.info(f"Registered volume spike callback. Total: {len(self.volume_spike_callbacks)}")
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get event processor statistics."""
+        return {
+            'events_processed': self.events_processed,
+            'new_token_callbacks': len(self.new_token_callbacks),
+            'price_update_callbacks': len(self.price_update_callbacks),
+            'volume_spike_callbacks': len(self.volume_spike_callbacks),
+            'is_running': self.running
+        }
 
 
 # Global event processor instance
