@@ -1,7 +1,6 @@
 """
 Enhanced wallet tracking for the Solana pump.fun sniping bot.
-Monitors specific wallets for transactions and mimics their buying behavior.
-Fixed version with verbose logging and proper transaction detection.
+Monitors specific wallets for transactions on pump.fun, Raydium, and other DEXs.
 """
 # File Location: src/monitoring/wallet_tracker.py
 
@@ -11,11 +10,8 @@ import json
 from datetime import datetime
 from solders.pubkey import Pubkey as PublicKey
 from solana.rpc.commitment import Confirmed
-import websockets
 import base58
-import struct
 import time
-import traceback
 from solders.signature import Signature
 
 from src.utils.config import config_manager
@@ -25,61 +21,43 @@ from src.core.connection_manager import connection_manager
 logger = get_logger("wallet_tracker")
 
 
-class WalletTransaction:
-    """Stores information about a wallet transaction."""
-    
-    def __init__(self, signature: str, timestamp: float):
-        self.signature: str = signature
-        self.timestamp: float = timestamp
-        self.token_address: Optional[str] = None
-        self.amount_sol: float = 0.0
-        self.is_buy: bool = False
-        self.is_sell: bool = False
-        self.is_create: bool = False
-        self.raw_data: Optional[Dict] = None
-
-
 class EnhancedWalletTracker:
     """
-    Enhanced wallet tracker with robust monitoring for pump.fun transactions.
+    Enhanced wallet tracker with robust monitoring for pump.fun and DEX transactions.
     """
     
     def __init__(self):
         self.settings = config_manager.get_settings()
-        
-        # Use the configured WebSocket endpoint from settings
-        self.websocket_url = self.settings.solana.websocket_endpoint
-        logger.info(f"Using WebSocket endpoint: {self.websocket_url}")
-        
         self.tracked_wallets: Set[str] = set(self.settings.tracking.wallets)
-        # Fix PublicKey initialization - use from_string for base58 addresses
-        self.pump_program_id = PublicKey.from_string("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P")
-        self.subscriptions: Dict[int, str] = {}
-        self.transaction_cache: Set[str] = set()  # Prevent duplicate processing
-        self.websocket: Optional[websockets.WebSocketClientProtocol] = None
+        
+        # Program IDs for various DEXs and protocols
+        self.program_ids = {
+            "Pump.fun": "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+            "Raydium V4": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+            "Raydium Launchpad": "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj",
+            "OKX DEX Router": "6m2CDdhRgxpH4WjvdzxAYbGxwdGUz5MziiL5jek2kBma",
+            "Jupiter V6": "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"
+        }
+        
+        self.dex_program_ids = set(self.program_ids.values())
         self.running: bool = False
         self.buy_callbacks: List[Callable[[str, str, float], None]] = []
         self.processed_signatures: Set[str] = set()
-        self.websocket_tasks: List[asyncio.Task] = []
-        self.monitoring_active = False  # Track if monitoring is active
+        self.monitoring_tasks: List[asyncio.Task] = []
+        self.monitoring_active = False
         
-        # Instruction discriminators for pump.fun
-        self.BUY_DISCRIMINATOR = bytes([102, 6, 61, 18, 1, 218, 235, 234])
-        self.SELL_DISCRIMINATOR = bytes([51, 230, 133, 164, 1, 127, 131, 173])
-        self.CREATE_DISCRIMINATOR = bytes([181, 157, 89, 67, 143, 182, 52, 72])
-        
-        # Transaction parser
-        self.parser = PumpFunTransactionParser()
-        
-        # Statistics tracking
+        # Statistics
         self.stats = {
             "transactions_detected": 0,
             "buys_detected": 0,
             "sells_detected": 0,
-            "creates_detected": 0,
+            "dex_swaps_detected": 0,
             "errors": 0,
+            "checks_performed": 0,
             "last_check": time.time()
         }
+        
+        logger.info(f"WalletTracker initialized - tracking {len(self.tracked_wallets)} wallet(s)")
         
     async def start(self) -> None:
         """Start tracking specified wallets for transactions."""
@@ -88,90 +66,78 @@ class EnhancedWalletTracker:
             return
             
         if not self.tracked_wallets:
-            logger.info("No wallets specified for tracking")
+            logger.warning("No wallets specified for tracking")
             return
             
         self.running = True
         self.monitoring_active = True
-        logger.info(f"Starting enhanced wallet tracker for {len(self.tracked_wallets)} wallets")
-        logger.info(f"Tracked wallets: {list(self.tracked_wallets)}")
         
-        # Start monitoring with periodic transaction checks
+        logger.info(f"Starting wallet tracker for wallets: {list(self.tracked_wallets)}")
+        
+        # Start monitoring task for each wallet
         for wallet_address in self.tracked_wallets:
-            logger.info(f"Starting monitoring task for wallet: {wallet_address}")
-            task = asyncio.create_task(self._monitor_wallet_transactions(wallet_address))
-            self.websocket_tasks.append(task)
+            task = asyncio.create_task(self._monitor_wallet(wallet_address))
+            self.monitoring_tasks.append(task)
+        
+        # Start statistics logger
+        asyncio.create_task(self._log_statistics())
         
     async def stop(self) -> None:
         """Stop tracking wallets."""
         self.running = False
         self.monitoring_active = False
-        logger.info("Stopping wallet tracker")
         
         # Cancel all monitoring tasks
-        for task in self.websocket_tasks:
+        for task in self.monitoring_tasks:
             task.cancel()
         
-        # Wait for tasks to complete
-        await asyncio.gather(*self.websocket_tasks, return_exceptions=True)
-        self.websocket_tasks.clear()
+        await asyncio.gather(*self.monitoring_tasks, return_exceptions=True)
+        self.monitoring_tasks.clear()
         
-        # Close WebSocket if open
-        if self.websocket and not self.websocket.closed:
-            await self.websocket.close()
-            self.websocket = None
+        logger.info("Wallet tracker stopped")
     
-    async def _monitor_wallet_transactions(self, wallet_address: str) -> None:
-        """Monitor a wallet's transactions periodically."""
-        logger.info(f"Starting transaction monitoring for wallet {wallet_address[:8]}...")
-        check_count = 0
+    async def _monitor_wallet(self, wallet_address: str) -> None:
+        """Monitor a wallet for transactions."""
+        logger.info(f"Starting to monitor wallet: {wallet_address}")
         
         while self.running:
             try:
-                check_count += 1
-                logger.debug(f"Check #{check_count} for wallet {wallet_address[:8]}...")
-                await self._check_recent_transactions(wallet_address)
-                self.stats["last_check"] = time.time()
-                await asyncio.sleep(2)  # Check every 2 seconds
+                await self._check_wallet_transactions(wallet_address)
+                self.stats["checks_performed"] += 1
+                await asyncio.sleep(1)  # Check every second
                 
             except asyncio.CancelledError:
-                logger.info(f"Monitoring cancelled for wallet {wallet_address[:8]}...")
                 break
             except Exception as e:
-                logger.error(f"Error monitoring wallet {wallet_address[:8]}...: {str(e)}", exc_info=True)
+                logger.error(f"Error monitoring wallet {wallet_address}: {e}")
                 self.stats["errors"] += 1
-                await asyncio.sleep(5)  # Wait longer on error
+                await asyncio.sleep(5)
     
-    async def _check_recent_transactions(self, wallet_address: str) -> None:
+    async def _check_wallet_transactions(self, wallet_address: str) -> None:
         """Check recent transactions for a wallet."""
         try:
-            # Get RPC client
             client = await connection_manager.get_rpc_client()
             if not client:
-                logger.error("No RPC client available")
                 return
-            
-            logger.debug(f"[RPC] Getting signatures for address: {wallet_address}")
             
             # Get recent signatures
             response = await client.get_signatures_for_address(
                 PublicKey.from_string(wallet_address),
-                limit=10  # Check last 10 transactions
+                limit=5
             )
             
             if not response or not response.value:
-                logger.debug(f"No transactions found for wallet {wallet_address[:8]}...")
                 return
             
-            logger.info(f"[RPC] Found {len(response.value)} transactions for wallet {wallet_address[:8]}...")
-            
+            # Process new transactions
             for sig_info in response.value:
                 signature = str(sig_info.signature)
                 
                 if signature in self.processed_signatures:
                     continue
                 
-                logger.debug(f"[RPC] Fetching transaction details for: {signature[:8]}...")
+                # Mark as processed
+                self.processed_signatures.add(signature)
                 
                 # Fetch transaction details
                 tx_response = await client.get_transaction(
@@ -182,26 +148,22 @@ class EnhancedWalletTracker:
                 )
                 
                 if tx_response and tx_response.value:
-                    # Process transaction to check if it's pump.fun related
                     await self._analyze_transaction(tx_response.value, wallet_address, signature)
-                else:
-                    logger.debug(f"[RPC] No transaction data for signature: {signature[:8]}...")
                     
         except Exception as e:
-            logger.error(f"[RPC] Error checking recent transactions: {str(e)}", exc_info=True)
+            logger.error(f"Error checking transactions: {e}")
             self.stats["errors"] += 1
     
     async def _analyze_transaction(self, tx_data: Any, wallet_address: str, signature: str) -> None:
-        """Analyze a transaction for pump.fun operations."""
+        """Analyze a transaction for DEX operations."""
         try:
-            # Convert solders object to dict if needed
+            # Convert to dict if needed
             if hasattr(tx_data, 'to_json'):
                 tx_json = tx_data.to_json()
                 tx_data = json.loads(tx_json)
             
             meta = tx_data.get("meta", {})
             if meta.get("err"):
-                logger.debug(f"Skipping failed transaction: {signature[:8]}...")
                 return  # Skip failed transactions
             
             transaction = tx_data.get("transaction", {})
@@ -209,193 +171,129 @@ class EnhancedWalletTracker:
             instructions = message.get("instructions", [])
             logs = meta.get("logMessages", [])
             
-            logger.debug(f"[TX] Analyzing transaction {signature[:8]}... with {len(instructions)} instructions")
-            
-            # Check each instruction
-            pump_found = False
-            for i, instruction in enumerate(instructions):
+            # Check for DEX programs
+            program_ids_in_tx = set()
+            for instruction in instructions:
                 program_id = instruction.get("programId")
-                
-                # Check if it's a pump.fun instruction
-                if program_id == str(self.pump_program_id):
-                    pump_found = True
-                    self.processed_signatures.add(signature)
-                    logger.info(f"🎯 [PUMP.FUN] Found pump.fun transaction: {signature[:8]}...")
-                    logger.info(f"[PUMP.FUN] Instruction #{i+1} - Program: {program_id}")
-                    self.stats["transactions_detected"] += 1
-                    
-                    # Parse the instruction
-                    tx_info = await self._parse_pump_instruction(instruction, logs, wallet_address, signature)
-                    if tx_info:
-                        await self._process_pump_transaction(tx_info)
+                if program_id and program_id in self.dex_program_ids:
+                    program_ids_in_tx.add(program_id)
             
-            if not pump_found:
-                logger.debug(f"[TX] No pump.fun instructions in transaction {signature[:8]}...")
-                # Mark as processed to avoid checking again
-                self.processed_signatures.add(signature)
+            if not program_ids_in_tx:
+                return  # No DEX programs found
+            
+            # Log the DEX transaction
+            self.stats["transactions_detected"] += 1
+            
+            for prog_id in program_ids_in_tx:
+                prog_name = next((name for name, id in self.program_ids.items() if id == prog_id), prog_id)
+                logger.info(f"[{prog_name}] Transaction detected: {signature[:32]}...")
+            
+            # Analyze for swap details
+            swap_info = self._extract_swap_info(instructions, logs, program_ids_in_tx)
+            
+            if swap_info and swap_info.get("is_buy"):
+                self.stats["buys_detected"] += 1
+                self.stats["dex_swaps_detected"] += 1
+                
+                token_address = swap_info.get("token_address", "Unknown")
+                amount_sol = swap_info.get("amount_sol", 0)
+                dex_name = swap_info.get("dex_name", "Unknown DEX")
+                
+                logger.info(
+                    f"🟢 BUY DETECTED on {dex_name} | "
+                    f"Wallet: {wallet_address[:8]}... | "
+                    f"Token: {token_address[:16]}... | "
+                    f"Amount: {amount_sol:.6f} SOL | "
+                    f"TX: {signature[:32]}..."
+                )
+                
+                # Trigger callbacks
+                for callback in self.buy_callbacks:
+                    try:
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback(wallet_address, token_address, amount_sol)
+                        else:
+                            callback(wallet_address, token_address, amount_sol)
+                    except Exception as e:
+                        logger.error(f"Error in buy callback: {e}")
                         
         except Exception as e:
-            logger.error(f"[TX] Error analyzing transaction: {str(e)}", exc_info=True)
+            logger.error(f"Error analyzing transaction: {e}")
             self.stats["errors"] += 1
     
-    async def _parse_pump_instruction(self, instruction: Dict, logs: List[str], wallet: str, signature: str) -> Optional[Dict]:
-        """Parse pump.fun instruction to determine operation type."""
+    def _extract_swap_info(self, instructions: List[Dict], logs: List[str], 
+                          program_ids: Set[str]) -> Optional[Dict[str, Any]]:
+        """Extract swap information from transaction."""
         try:
-            logger.debug(f"[PARSE] Parsing pump.fun instruction for signature {signature[:8]}...")
-            
-            # Get instruction data
-            data = instruction.get("data")
-            if not data:
-                logger.debug("[PARSE] No instruction data found")
-                return None
-            
-            operation = "unknown"
-            token = "unknown"
+            # Default values
+            is_buy = False
+            token_address = "Unknown"
             amount_sol = 0.0
+            dex_name = "Unknown DEX"
             
-            # Log the raw data for debugging
-            logger.debug(f"[PARSE] Raw instruction data: {data[:50]}..." if len(str(data)) > 50 else f"[PARSE] Raw instruction data: {data}")
+            # Identify DEX
+            for prog_id in program_ids:
+                if prog_id in self.program_ids.values():
+                    dex_name = next(name for name, id in self.program_ids.items() if id == prog_id)
+                    break
             
-            # Try to decode base58 data
-            try:
-                if isinstance(data, str):
-                    decoded = base58.b58decode(data)
-                    if len(decoded) >= 8:
-                        discriminator = decoded[:8]
-                        logger.debug(f"[PARSE] Discriminator bytes: {discriminator.hex()}")
-                        
-                        if discriminator == self.BUY_DISCRIMINATOR:
-                            operation = "buy"
-                            logger.info("[PARSE] ✅ Detected BUY operation from discriminator")
-                        elif discriminator == self.SELL_DISCRIMINATOR:
-                            operation = "sell"
-                            logger.info("[PARSE] ✅ Detected SELL operation from discriminator")
-                        elif discriminator == self.CREATE_DISCRIMINATOR:
-                            operation = "create"
-                            logger.info("[PARSE] ✅ Detected CREATE operation from discriminator")
-            except Exception as e:
-                logger.debug(f"[PARSE] Could not decode instruction data: {e}")
-            
-            # If we couldn't determine from discriminator, check logs
-            if operation == "unknown" and logs:
-                logger.debug(f"[PARSE] Checking {len(logs)} transaction logs...")
-                logs_str = " ".join(logs).lower()
-                if "buy" in logs_str or "swap executed" in logs_str:
-                    operation = "buy"
-                    logger.info("[PARSE] ✅ Detected BUY operation from logs")
-                elif "sell" in logs_str:
-                    operation = "sell"
-                    logger.info("[PARSE] ✅ Detected SELL operation from logs")
-                elif "create" in logs_str or "initialize" in logs_str:
-                    operation = "create"
-                    logger.info("[PARSE] ✅ Detected CREATE operation from logs")
-            
-            # Try to extract token address from accounts
-            accounts = instruction.get("accounts", [])
-            logger.debug(f"[PARSE] Instruction has {len(accounts)} accounts")
-            if len(accounts) > 2:
-                # Usually the token mint is in the accounts
-                token = accounts[2] if isinstance(accounts[2], str) else token
-                logger.debug(f"[PARSE] Extracted token address: {token[:8]}...")
-            
-            # Try to extract amount from logs
+            # Parse logs for swap details
             for log in logs:
-                if "amount:" in log.lower():
+                log_lower = log.lower()
+                
+                # Detect buy operations
+                if any(buy_indicator in log_lower for buy_indicator in 
+                      ["buy", "swap executed", "buyexactin", "buy_exact_in"]):
+                    is_buy = True
+                
+                # Extract amounts
+                if "amount_in:" in log:
                     try:
-                        # Extract number after "amount:"
-                        parts = log.lower().split("amount:")
-                        if len(parts) > 1:
-                            amount_str = parts[1].strip().split()[0]
-                            amount_sol = float(amount_str) / 1e9  # Convert lamports to SOL
-                            logger.debug(f"[PARSE] Extracted amount: {amount_sol} SOL")
+                        amount_str = log.split("amount_in:")[1].strip().split()[0].replace(",", "")
+                        amount_sol = float(amount_str) / 1e9  # Convert lamports to SOL
                     except:
                         pass
             
-            result = {
-                "operation": operation,
-                "wallet": wallet,
-                "signature": signature,
-                "token": token,
-                "amount_sol": amount_sol
-            }
+            # Extract token address from instructions
+            for instruction in instructions:
+                accounts = instruction.get("accounts", [])
+                if len(accounts) >= 5:
+                    # Common pattern: destination mint at index 4 for buys
+                    potential_token = accounts[4] if isinstance(accounts[4], str) else None
+                    if potential_token and potential_token != "So11111111111111111111111111111111111111112":
+                        token_address = potential_token
+                        break
             
-            logger.info(f"[PARSE] Final result - Operation: {operation}, Token: {token[:8]}..., Amount: {amount_sol} SOL")
-            return result
-            
+            if is_buy and amount_sol > 0:
+                return {
+                    "is_buy": True,
+                    "token_address": token_address,
+                    "amount_sol": amount_sol,
+                    "dex_name": dex_name
+                }
+                
         except Exception as e:
-            logger.error(f"[PARSE] Error parsing instruction: {str(e)}", exc_info=True)
-            return None
-    
-    async def _process_pump_transaction(self, tx_info: Dict) -> None:
-        """Process a pump.fun transaction."""
-        operation = tx_info.get("operation")
-        wallet = tx_info.get("wallet")
-        token = tx_info.get("token", "unknown")
-        amount_sol = tx_info.get("amount_sol", 0)
-        signature = tx_info.get("signature")
+            logger.error(f"Error extracting swap info: {e}")
         
-        if operation == "buy":
-            self.stats["buys_detected"] += 1
-            logger.info(
-                f"🟢 [BUY] Wallet {wallet[:8]}... bought token {token[:8]}... "
-                f"for {amount_sol:.4f} SOL (tx: {signature[:8]}...)"
-            )
+        return None
+    
+    async def _log_statistics(self):
+        """Log statistics periodically."""
+        while self.running:
+            await asyncio.sleep(30)  # Every 30 seconds
             
-            # Trigger buy callbacks
-            logger.info(f"[CALLBACK] Triggering {len(self.buy_callbacks)} buy callbacks...")
-            for i, callback in enumerate(self.buy_callbacks):
-                try:
-                    logger.debug(f"[CALLBACK] Executing callback #{i+1}")
-                    if asyncio.iscoroutinefunction(callback):
-                        await callback(wallet, token, amount_sol)
-                    else:
-                        callback(wallet, token, amount_sol)
-                    logger.debug(f"[CALLBACK] Callback #{i+1} executed successfully")
-                except Exception as e:
-                    logger.error(f"[CALLBACK] Error in buy callback #{i+1}: {str(e)}", exc_info=True)
-                    
-        elif operation == "sell":
-            self.stats["sells_detected"] += 1
             logger.info(
-                f"🔴 [SELL] Wallet {wallet[:8]}... sold token {token[:8]}... "
-                f"for {amount_sol:.4f} SOL (tx: {signature[:8]}...)"
+                f"📊 STATS | Checks: {self.stats['checks_performed']} | "
+                f"TX: {self.stats['transactions_detected']} | "
+                f"Buys: {self.stats['buys_detected']} | "
+                f"DEX Swaps: {self.stats['dex_swaps_detected']} | "
+                f"Errors: {self.stats['errors']}"
             )
-            
-        elif operation == "create":
-            self.stats["creates_detected"] += 1
-            logger.info(
-                f"✨ [CREATE] Wallet {wallet[:8]}... created token {token[:8]}... "
-                f"(tx: {signature[:8]}...)"
-            )
-            
-            # Treat create as a buy signal
-            logger.info(f"[CALLBACK] Triggering {len(self.buy_callbacks)} buy callbacks for CREATE...")
-            for i, callback in enumerate(self.buy_callbacks):
-                try:
-                    logger.debug(f"[CALLBACK] Executing callback #{i+1} for CREATE")
-                    if asyncio.iscoroutinefunction(callback):
-                        await callback(wallet, token, 0.1)  # Default amount for creates
-                    else:
-                        callback(wallet, token, 0.1)
-                    logger.debug(f"[CALLBACK] Callback #{i+1} executed successfully")
-                except Exception as e:
-                    logger.error(f"[CALLBACK] Error in buy callback #{i+1} for create: {str(e)}", exc_info=True)
     
     def register_buy_callback(self, callback: Callable[[str, str, float], None]) -> None:
         """Register a callback for buy transactions."""
         self.buy_callbacks.append(callback)
-        logger.info(f"Registered wallet buy callback. Total callbacks: {len(self.buy_callbacks)}")
-    
-    def add_tracked_wallet(self, wallet_address: str) -> None:
-        """Add a wallet to track."""
-        if wallet_address not in self.tracked_wallets:
-            self.tracked_wallets.add(wallet_address)
-            logger.info(f"Added wallet to track: {wallet_address[:8]}...")
-            
-            # If already running, start monitoring this wallet
-            if self.running:
-                task = asyncio.create_task(self._monitor_wallet_transactions(wallet_address))
-                self.websocket_tasks.append(task)
+        logger.info(f"Registered buy callback - Total callbacks: {len(self.buy_callbacks)}")
     
     def get_stats(self) -> Dict[str, int]:
         """Get tracking statistics."""
@@ -407,15 +305,6 @@ class EnhancedWalletTracker:
     def is_monitoring_active(self) -> bool:
         """Check if monitoring is actively running."""
         return self.monitoring_active and self.running
-
-
-class PumpFunTransactionParser:
-    """Parser for pump.fun transactions."""
-    
-    def __init__(self):
-        self.BUY_DISCRIMINATOR = bytes([102, 6, 61, 18, 1, 218, 235, 234])
-        self.SELL_DISCRIMINATOR = bytes([51, 230, 133, 164, 1, 127, 131, 173])
-        self.CREATE_DISCRIMINATOR = bytes([181, 157, 89, 67, 143, 182, 52, 72])
 
 
 # Global wallet tracker instance
