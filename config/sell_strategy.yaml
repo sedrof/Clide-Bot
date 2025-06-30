@@ -1,0 +1,47 @@
+# Pump.fun Selling Strategy Configuration
+selling_rules:
+  # Rule 1: Quick profit on moderate gains
+  - name: "quick_profit_5pct"
+    conditions:
+      price_gain_percent: ">= 5"
+      time_seconds: "<= 8"
+    action: "DUMP_ALL"
+    priority: 1
+    
+  # Rule 2: Fast exit on high gains
+  - name: "fast_exit_15pct"
+    conditions:
+      price_gain_percent: ">= 15"
+      time_seconds: "<= 5"
+    action: "DUMP_ALL"
+    priority: 2
+    
+  # Rule 3: Volume spike exit
+  - name: "volume_spike_exit"
+    conditions:
+      price_gain_percent: ">= 2"
+      volume_multiplier: "> 3"
+    action: "DUMP_ALL"
+    priority: 3
+    
+  # Rule 4: Stop loss / timeout
+  - name: "timeout_stop_loss"
+    conditions:
+      time_seconds: "> 15"
+      price_gain_percent: "< 2"
+    action: "DUMP_ALL"
+    priority: 4
+
+# Strategy Settings
+settings:
+  check_interval_ms: 100        # How often to evaluate rules (100ms)
+  volume_baseline_period: 60    # Seconds to calculate normal volume
+  max_hold_time: 30            # Maximum hold time regardless of rules
+  emergency_stop_loss: -10     # Emergency stop if loss exceeds this %
+  
+# Execution Settings
+execution:
+  slippage_tolerance: 0.5      # 0.5% slippage tolerance
+  priority_fee: 0.001          # SOL priority fee for faster execution
+  retry_attempts: 3            # Retry failed transactions
+  partial_sell_enabled: false  # For future: enable partial selling
