@@ -1,6 +1,6 @@
 """
 Transaction builder for the Solana pump.fun sniping bot.
-Constructs transactions for buying and selling tokens.
+Fixed version with proper async transaction execution.
 """
 
 from typing import Optional, Dict, Any, List
@@ -91,8 +91,8 @@ class TransactionBuilder:
             buy_instruction = Instruction(
                 program_id=self.pump_program_id,
                 accounts=[
-                    {"pubkey": wallet_pubkey, "is_signer": True, "is_writable": True},
-                    {"pubkey": token_pubkey, "is_signer": False, "is_writable": True},
+                    AccountMeta(pubkey=wallet_pubkey, is_signer=True, is_writable=True),
+                    AccountMeta(pubkey=token_pubkey, is_signer=False, is_writable=True),
                 ],
                 data=b"buy" + amount_lamports.to_bytes(8, byteorder="little")
             )
@@ -161,8 +161,8 @@ class TransactionBuilder:
             sell_instruction = Instruction(
                 program_id=self.raydium_program_id,
                 accounts=[
-                    {"pubkey": wallet_pubkey, "is_signer": True, "is_writable": True},
-                    {"pubkey": token_pubkey, "is_signer": False, "is_writable": True},
+                    AccountMeta(pubkey=wallet_pubkey, is_signer=True, is_writable=True),
+                    AccountMeta(pubkey=token_pubkey, is_signer=False, is_writable=True),
                 ],
                 data=b"sell" + amount_units.to_bytes(8, byteorder="little")
             )
@@ -289,6 +289,82 @@ class TransactionBuilder:
             
         except Exception as e:
             logger.error(f"Failed to estimate transaction cost: {e}")
+            return None
+    
+    async def build_and_execute_buy_transaction(
+        self,
+        token_address: str,
+        amount_sol: float
+    ) -> Optional[str]:
+        """
+        Build and execute a buy transaction.
+        
+        Args:
+            token_address: Token to buy
+            amount_sol: Amount in SOL to spend
+            
+        Returns:
+            Transaction signature if successful, None otherwise
+        """
+        try:
+            logger.info(f"Building and executing buy transaction for {token_address[:8]}...")
+            
+            # Build the transaction
+            tx = await self.build_buy_transaction(token_address, amount_sol)
+            if not tx:
+                logger.error("Failed to build buy transaction")
+                return None
+            
+            # Send and confirm transaction
+            signature = await wallet_manager.send_and_confirm_transaction(tx)
+            
+            if signature:
+                logger.info(f"Buy transaction executed successfully: {signature}")
+                return signature
+            else:
+                logger.error("Buy transaction failed to confirm")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error executing buy transaction: {e}")
+            return None
+    
+    async def build_and_execute_sell_transaction(
+        self,
+        token_address: str,
+        amount_tokens: float
+    ) -> Optional[str]:
+        """
+        Build and execute a sell transaction.
+        
+        Args:
+            token_address: Token to sell
+            amount_tokens: Amount of tokens to sell
+            
+        Returns:
+            Transaction signature if successful, None otherwise
+        """
+        try:
+            logger.info(f"Building and executing sell transaction for {token_address[:8]}...")
+            
+            # Build the transaction
+            tx = await self.build_sell_transaction(token_address, amount_tokens)
+            if not tx:
+                logger.error("Failed to build sell transaction")
+                return None
+            
+            # Send and confirm transaction
+            signature = await wallet_manager.send_and_confirm_transaction(tx)
+            
+            if signature:
+                logger.info(f"Sell transaction executed successfully: {signature}")
+                return signature
+            else:
+                logger.error("Sell transaction failed to confirm")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error executing sell transaction: {e}")
             return None
 
 

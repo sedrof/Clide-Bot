@@ -46,7 +46,7 @@ class EnhancedWalletTracker:
         self.monitoring_active = False
         
         # IMPROVED: Faster polling interval (0.5 seconds)
-        self.POLL_INTERVAL = 0.5
+        self.POLL_INTERVAL = 0.2  # Optimized to 200ms for faster detection  # Optimized to 200ms for faster detection
         
         # Statistics
         self.stats = {
@@ -63,7 +63,7 @@ class EnhancedWalletTracker:
         }
         
         logger.info(f"WalletTracker initialized - tracking {len(self.tracked_wallets)} wallet(s)")
-        logger.info(f"Polling interval: {self.POLL_INTERVAL}s for faster detection")
+        logger.info(f"Polling interval: {self.POLL_INTERVAL}s (200ms) for competitive detection speed")
         
     async def start(self) -> None:
         """Start tracking specified wallets for transactions."""
