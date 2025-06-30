@@ -10,6 +10,7 @@ import time
 from collections import defaultdict
 
 from src.utils.config import config_manager
+from typing import Callable
 from src.utils.logger import get_logger
 from src.core.connection_manager import connection_manager
 from src.core.wallet_manager import wallet_manager

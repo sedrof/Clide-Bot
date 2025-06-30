@@ -14,7 +14,7 @@ from src.core.connection_manager import connection_manager
 from src.monitoring.pump_monitor import pump_monitor, TokenInfo
 from src.monitoring.price_tracker import price_tracker
 from src.monitoring.volume_analyzer import volume_analyzer
-from src.monitoring.wallet_tracker import wallet_tracker
+from src.monitoring.wallet_tracker import EnhancedWalletTracker
 from src.trading.strategy_engine import strategy_engine
 
 logger = get_logger("event_processor")

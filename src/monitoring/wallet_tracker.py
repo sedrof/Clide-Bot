@@ -10,7 +10,6 @@ import json
 from datetime import datetime
 from solders.pubkey import Pubkey as PublicKey
 from solana.rpc.websocket_api import connect as ws_connect
-from solders.pubkey import Pubkey
 import websockets
 import base58
 import struct
@@ -133,9 +132,11 @@ class EnhancedWalletTracker:
     
     def __init__(self):
         self.settings = config_manager.get_settings()
-        self.websocket_url = self.settings.connection.websocket_url if hasattr(self.settings.connection, 'websocket_url') else "wss://api.mainnet-beta.solana.com"
+        self.websocket_url = "wss://api.mainnet-beta.solana.com"
+        if hasattr(self.settings, 'connection') and hasattr(self.settings.connection, 'websocket_url'):
+            self.websocket_url = self.settings.connection.websocket_url
         self.tracked_wallets: Set[str] = set(self.settings.tracking.wallets)
-        self.pump_program_id = PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P")
+        self.pump_program_id = PublicKey.from_string("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P")
         self.subscriptions: Dict[int, str] = {}
         self.transaction_cache: Set[str] = set()  # Prevent duplicate processing
         self.websocket: Optional[websockets.WebSocketClientProtocol] = None
@@ -790,115 +791,7 @@ class PumpFunTransactionParser:
             instruction_data = self._decode_instruction_data(instruction, account_keys)
             
             if not instruction_data:
-                continue
-                
-            # Check if tracked wallet is involved
-            if not self._is_wallet_involved(instruction, account_keys, tracked_wallet):
-                continue
-                
-            return instruction_data
-                
-        return None
-    
-    def _get_program_id(self, instruction: Dict, account_keys: List) -> str:
-        """Get the program ID for an instruction."""
-        program_id_index = instruction.get('programIdIndex')
-        if program_id_index is not None and program_id_index < len(account_keys):
-            return account_keys[program_id_index]
-        return ""
-    
-    def _decode_instruction_data(self, instruction: Dict, account_keys: List) -> Optional[Dict]:
-        """
-        Decode pump.fun instruction data to identify operation type.
-        """
-        try:
-            # Get instruction data (base58 encoded)
-            data = instruction.get('data')
-            if not data:
                 return None
-                
-            # Decode from base58
-            decoded_data = base58.b58decode(data)
-            
-            # Check discriminator (first 8 bytes)
-            discriminator = decoded_data[:8]
-            
-            if discriminator == self.BUY_DISCRIMINATOR:
-                return self._parse_buy_instruction(decoded_data, instruction, account_keys)
-            elif discriminator == self.SELL_DISCRIMINATOR:
-                return self._parse_sell_instruction(decoded_data, instruction, account_keys)
-            else:
-                # Check for create instruction (different pattern)
-                return self._check_for_create_instruction(instruction, account_keys)
-                
-        except Exception as e:
-            logger.error(f"Error decoding instruction: {e}")
-            return None
-    
-    def _parse_buy_instruction(self, data: bytes, instruction: Dict, account_keys: List) -> Dict:
-        """
-        Parse buy instruction data to extract amounts and token info.
-        """
-        try:
-            # Unpack data (after 8-byte discriminator)
-            # Format: discriminator(8) + amount(8) + max_sol_cost(8)
-            amount = struct.unpack('<Q', data[8:16])[0]
-            max_sol_cost = struct.unpack('<Q', data[16:24])[0]
-            
-            # Get accounts involved
-            accounts = instruction.get('accounts', [])
-            
-            return {
-                'type': 'buy',
-                'token_amount': amount,
-                'max_sol_cost': max_sol_cost,
-                'max_sol_cost_ui': max_sol_cost / 1e9,  # Convert lamports to SOL
-                'mint': account_keys[accounts[2]] if len(accounts) > 2 else None,
-                'buyer': account_keys[accounts[6]] if len(accounts) > 6 else None,
-                'instruction_index': instruction.get('index', 0)
-            }
-        except Exception as e:
-            logger.error(f"Error parsing buy instruction: {e}")
-            return {'type': 'buy', 'error': str(e)}
-    
-    def _parse_sell_instruction(self, data: bytes, instruction: Dict, account_keys: List) -> Dict:
-        """
-        Parse sell instruction data to extract amounts and token info.
-        """
-        try:
-            # Unpack data (after 8-byte discriminator)
-            # Format may vary, extract what we can
-            accounts = instruction.get('accounts', [])
-            
-            return {
-                'type': 'sell',
-                'mint': account_keys[accounts[2]] if len(accounts) > 2 else None,
-                'seller': account_keys[accounts[6]] if len(accounts) > 6 else None,
-                'instruction_index': instruction.get('index', 0)
-            }
-        except Exception as e:
-            logger.error(f"Error parsing sell instruction: {e}")
-            return {'type': 'sell', 'error': str(e)}
-    
-    def _check_for_create_instruction(self, instruction: Dict, account_keys: List) -> Optional[Dict]:
-        """
-        Check if this is a create instruction for a new token.
-        """
-        # This is a placeholder; actual implementation may vary
-        return None
-    
-    def _is_wallet_involved(self, instruction: Dict, account_keys: List, tracked_wallet: str) -> bool:
-        """
-        Check if the tracked wallet is involved in this instruction.
-        """
-        accounts = instruction.get('accounts', [])
-        for account_idx in accounts:
-            if account_idx < len(account_keys):
-                account = account_keys[account_idx]
-                if account == tracked_wallet:
-                    return True
-        return False
-
 
 # Global wallet tracker instance (will be initialized later)
 wallet_tracker = None
@@ -908,4 +801,3 @@ def initialize_wallet_tracker():
     global wallet_tracker
     wallet_tracker = EnhancedWalletTracker()
     return wallet_tracker
-</content>
