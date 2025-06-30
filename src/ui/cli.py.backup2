@@ -141,7 +141,7 @@ class BotCLI:
         """Update footer with connection status and controls."""
         footer_text = Text()
         footer_text.append(f"RPC: {self.stats['connection_status']} | ", style="dim")
-        footer_text.append(f"Monitor: {self.stats['websocket_status']} | ", style="dim")
+        footer_text.append(f"WS: {self.stats['websocket_status']} | ", style="dim")
         footer_text.append("Press Ctrl+C to stop", style="dim yellow")
         
         self.layout["footer"].update(
@@ -453,12 +453,12 @@ class BotCLI:
                 # Update WebSocket status based on wallet tracker
                 try:
                     from src.monitoring.wallet_tracker import wallet_tracker
-                    if wallet_tracker and hasattr(wallet_tracker, 'is_monitoring_active') and wallet_tracker.is_monitoring_active():
-                        self.stats["websocket_status"] = "🟢 Monitoring"
+                    if wallet_tracker and hasattr(wallet_tracker, 'websocket') and wallet_tracker.websocket and not wallet_tracker.websocket.closed:
+                        self.stats["websocket_status"] = "🟢 Connected"
                     else:
-                        self.stats["websocket_status"] = "🔴 Not Monitoring"
+                        self.stats["websocket_status"] = "🔴 Disconnected"
                 except:
-                    self.stats["websocket_status"] = "⚠️ Unknown"
+                    pass
                 
                 self.stats["last_update"] = time.time()
                 
