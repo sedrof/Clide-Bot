@@ -5,12 +5,11 @@ Evaluates events and market conditions to make trading decisions.
 # File Location: src/trading/strategy_engine.py
 
 import asyncio
-from typing import Dict, Any, Optional, List, Set
+from typing import Dict, Any, Optional, List, Set, Callable
 import time
 from collections import defaultdict
 
 from src.utils.config import config_manager
-from typing import Callable
 from src.utils.logger import get_logger
 from src.core.connection_manager import connection_manager
 from src.core.wallet_manager import wallet_manager
@@ -150,64 +149,43 @@ class StrategyEngine:
         Evaluate a buy transaction from a tracked wallet for potential mimic buy.
         
         Args:
-            wallet_address: Wallet address that made the buy
-            token_address: Token address that was bought
-            amount_sol: Amount in SOL spent on the buy
+            wallet_address: Wallet that made the buy
+            token_address: Token that was bought
+            amount_sol: Amount in SOL that was spent
         """
         try:
-            logger.info(f"Evaluating wallet buy from {wallet_address[:8]}... for token {token_address[:8]}... with {amount_sol:.2f} SOL")
-            
-            # Check if we have capacity to buy
-            if len(self.active_positions) >= self.max_positions:
-                logger.warning(
-                    f"Cannot mimic buy for {token_address[:8]}... from wallet {wallet_address[:8]}... - max positions reached",
-                    max_positions=self.max_positions
-                )
-                return
-            
-            # Check balance
-            balance = await wallet_manager.get_balance()
-            buy_amount = min(amount_sol, self.max_buy_amount_sol)
-            if balance < buy_amount * 1.2:  # Add 20% buffer for fees
-                logger.warning(
-                    f"Insufficient SOL balance to mimic buy for {token_address[:8]}...: {balance:.4f} SOL",
-                    required=buy_amount * 1.2
-                )
-                return
-            
-            # Fetch token details
-            token_data = await connection_manager.fetch_pump_token_data(token_address)
-            if not token_data:
-                logger.error(f"Failed to fetch token data for {token_address[:8]}...")
-                return
-            
-            token_info = TokenInfo(token_data)
-            
-            # Execute buy
             logger.info(
-                f"Mimicking buy for {token_info.symbol} from wallet {wallet_address[:8]}... with {buy_amount} SOL",
-                token=token_address
+                f"Evaluating wallet buy: {wallet_address[:8]}... bought {token_address[:8]}... for {amount_sol:.4f} SOL"
             )
             
-            success = await self.execute_buy(token_info)
-            if success:
-                logger.info(
-                    f"Successfully mimicked buy for {token_info.symbol} from wallet {wallet_address[:8]}...",
-                    token=token_address,
-                    amount_sol=buy_amount
-                )
+            # Check if we already have this position
+            if token_address in self.active_positions:
+                logger.info(f"Already have position in {token_address[:8]}..., skipping mimic buy")
+                return
+            
+            # Check if we have capacity
+            if len(self.active_positions) >= self.max_positions:
+                logger.warning(f"Max positions reached ({self.max_positions}). Cannot mimic buy.")
+                return
+            
+            # Fetch token data for evaluation
+            token_data = await connection_manager.fetch_pump_token_data(token_address)
+            if token_data:
+                token_info = TokenInfo(token_data)
+                if self._meets_buy_criteria(token_info):
+                    logger.info(f"Token {token_info.symbol} meets buy criteria for mimic buy. Executing buy order.", token=token_address)
+                    await self.execute_buy(token_info)
+                else:
+                    logger.info(f"Token {token_info.symbol} does not meet buy criteria for mimic buy. Skipping.", token=token_address)
             else:
-                logger.error(
-                    f"Failed to mimic buy for {token_info.symbol} from wallet {wallet_address[:8]}...",
-                    token=token_address
-                )
+                logger.error(f"Failed to fetch token data for mimic buy evaluation: {token_address[:8]}...")
                 
         except Exception as e:
-            logger.error(f"Error evaluating wallet buy for token {token_address[:8]}... from wallet {wallet_address[:8]}...: {e}", exc_info=True)
+            logger.error(f"Error evaluating wallet buy for token {token_address[:8]}...: {e}", exc_info=True)
     
     def _meets_buy_criteria(self, token_info: TokenInfo) -> bool:
         """
-        Check if token meets buy criteria based on settings.
+        Check if a token meets buy criteria based on settings.
         
         Args:
             token_info: Information about the token
@@ -216,40 +194,45 @@ class StrategyEngine:
             bool: True if token meets buy criteria
         """
         try:
-            # Check market cap
-            if token_info.market_cap_sol > self.settings.trading.max_market_cap_sol:
-                logger.info(
-                    f"Token {token_info.symbol} market cap {token_info.market_cap_sol:.2f} SOL exceeds max {self.settings.trading.max_market_cap_sol:.2f} SOL",
-                    token=token_info.address
-                )
-                return False
-            
             # Check liquidity
-            if token_info.liquidity_sol < self.settings.trading.min_liquidity_sol:
+            if token_info.liquidity_sol < self.settings.filters.min_liquidity_sol:
                 logger.info(
-                    f"Token {token_info.symbol} liquidity {token_info.liquidity_sol:.2f} SOL below min {self.settings.trading.min_liquidity_sol:.2f} SOL",
+                    f"Token {token_info.symbol} liquidity {token_info.liquidity_sol:.2f} SOL below minimum {self.settings.filters.min_liquidity_sol:.2f} SOL",
                     token=token_info.address
                 )
                 return False
             
-            # Check if token is too old (based on creation time or first trade)
-            if token_info.age_seconds > self.settings.trading.max_token_age_seconds:
+            # Check price
+            if token_info.price_sol > self.settings.filters.max_buy_price_sol:
                 logger.info(
-                    f"Token {token_info.symbol} age {token_info.age_seconds:.0f}s exceeds max {self.settings.trading.max_token_age_seconds:.0f}s",
+                    f"Token {token_info.symbol} price {token_info.price_sol:.8f} SOL above maximum {self.settings.filters.max_buy_price_sol:.8f} SOL",
                     token=token_info.address
                 )
                 return False
             
-            # Additional criteria can be added here
+            # Check holders
+            if hasattr(token_info, 'holders') and token_info.holders < self.settings.filters.min_holders:
+                logger.info(
+                    f"Token {token_info.symbol} holders {token_info.holders} below minimum {self.settings.filters.min_holders}",
+                    token=token_info.address
+                )
+                return False
+            
+            # Check if token is blacklisted
+            if token_info.address in self.settings.filters.blacklist_tokens:
+                logger.info(f"Token {token_info.symbol} is blacklisted", token=token_info.address)
+                return False
+            
+            logger.info(f"Token {token_info.symbol} meets all buy criteria", token=token_info.address)
             return True
             
         except Exception as e:
-            logger.error(f"Error checking buy criteria for token {token_info.symbol}: {e}", exc_info=True)
+            logger.error(f"Error checking buy criteria for token {token_info.symbol}: {e}", exc_info=True, token=token_info.address)
             return False
     
     def _meets_sell_criteria(self, position: Dict[str, Any]) -> bool:
         """
-        Check if position meets sell criteria based on settings.
+        Check if a position meets sell criteria based on settings.
         
         Args:
             position: Information about the active position
@@ -342,7 +325,10 @@ class StrategyEngine:
                 # Notify callbacks about trade
                 for callback in self.trade_callbacks:
                     try:
-                        callback("BUY", token_info.address, buy_amount_sol / token_info.price_sol, token_info.price_sol)
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback("BUY", token_info.address, buy_amount_sol / token_info.price_sol, token_info.price_sol)
+                        else:
+                            callback("BUY", token_info.address, buy_amount_sol / token_info.price_sol, token_info.price_sol)
                     except Exception as e:
                         logger.error(f"Error in trade callback for buy {token_info.symbol}: {e}")
                 
@@ -386,7 +372,10 @@ class StrategyEngine:
                 
                 for callback in self.trade_callbacks:
                     try:
-                        callback("SELL", token_address, sell_amount, sell_price)
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback("SELL", token_address, sell_amount, sell_price)
+                        else:
+                            callback("SELL", token_address, sell_amount, sell_price)
                     except Exception as e:
                         logger.error(f"Error in trade callback for sell {position['symbol']}: {e}")
                 

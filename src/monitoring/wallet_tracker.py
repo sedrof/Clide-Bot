@@ -1,6 +1,7 @@
 """
-Wallet tracking for the Solana pump.fun sniping bot.
+Enhanced wallet tracking for the Solana pump.fun sniping bot.
 Monitors specific wallets for transactions and mimics their buying behavior.
+Fixed version with proper WebSocket configuration.
 """
 # File Location: src/monitoring/wallet_tracker.py
 
@@ -9,18 +10,17 @@ from typing import Dict, Any, Optional, Callable, List, Set
 import json
 from datetime import datetime
 from solders.pubkey import Pubkey as PublicKey
-from solana.rpc.websocket_api import connect as ws_connect
+from solana.rpc.commitment import Confirmed
 import websockets
 import base58
 import struct
+import time
+import traceback
+from solders.signature import Signature
 
 from src.utils.config import config_manager
 from src.utils.logger import get_logger
 from src.core.connection_manager import connection_manager
-from src.core.wallet_manager import wallet_manager
-from src.core.transaction_builder import transaction_builder
-from src.trading.strategy_engine import strategy_engine
-from src.monitoring.pump_monitor import TokenInfo
 
 logger = get_logger("wallet_tracker")
 
@@ -28,7 +28,7 @@ logger = get_logger("wallet_tracker")
 class WalletTransaction:
     """Stores information about a wallet transaction."""
     
-    def __init__(self, data: Dict[str, Any], signature: str, timestamp: float):
+    def __init__(self, signature: str, timestamp: float):
         self.signature: str = signature
         self.timestamp: float = timestamp
         self.token_address: Optional[str] = None
@@ -36,106 +36,23 @@ class WalletTransaction:
         self.is_buy: bool = False
         self.is_sell: bool = False
         self.is_create: bool = False
-        
-        # Extract relevant information from transaction data
-        self._parse_transaction_data(data)
-    
-    def _parse_transaction_data(self, data: Dict[str, Any]) -> None:
-        """Parse transaction data to extract token address and amount."""
-        try:
-            # Log the full transaction data for debugging
-            logger.debug(f"Parsing transaction data for signature {self.signature[:8]}...: {json.dumps(data, indent=2)[:1000]}... (truncated)")
-            # Check if it's a pump.fun transaction
-            PUMP_FUN_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
-            BUY_DISCRIMINATOR = bytes([102, 6, 61, 18, 1, 218, 235, 234])
-            SELL_DISCRIMINATOR = bytes([51, 230, 133, 164, 1, 127, 131, 173])
-            
-            instructions = data.get("transaction", {}).get("message", {}).get("instructions", [])
-            logs = data.get("meta", {}).get("logMessages", [])
-            
-            if not instructions and not logs:
-                logger.info(f"No instructions or logs found in transaction data for {self.signature[:8]}...")
-                return
-                
-            logger.info(f"Found {len(instructions)} instructions and {len(logs)} log messages for transaction {self.signature[:8]}...")
-            
-            # Check for pump.fun program ID in instructions
-            for instruction in instructions:
-                program_id = instruction.get("programId", "")
-                if program_id == PUMP_FUN_PROGRAM_ID:
-                    data_str = instruction.get("data", "")
-                    if data_str:
-                        try:
-                            data_bytes = base58.b58decode(data_str)
-                            discriminator = data_bytes[:8]
-                            if discriminator == BUY_DISCRIMINATOR:
-                                self.is_buy = True
-                                logger.info(f"Buy transaction detected for {self.signature[:8]}... with pump.fun program")
-                                # Extract token address and SOL amount
-                                accounts = instruction.get("accounts", [])
-                                if len(accounts) > 2:
-                                    self.token_address = accounts[2]
-                                    logger.info(f"Token address extracted for buy {self.signature[:8]}...: {self.token_address[:8]}...")
-                                if len(data_bytes) >= 24:
-                                    max_sol_cost = struct.unpack('<Q', data_bytes[16:24])[0]
-                                    self.amount_sol = max_sol_cost / 1e9  # Convert lamports to SOL
-                                    logger.info(f"SOL amount extracted for buy {self.signature[:8]}...: {self.amount_sol}")
-                                break
-                            elif discriminator == SELL_DISCRIMINATOR:
-                                self.is_sell = True
-                                logger.info(f"Sell transaction detected for {self.signature[:8]}... with pump.fun program")
-                                accounts = instruction.get("accounts", [])
-                                if len(accounts) > 2:
-                                    self.token_address = accounts[2]
-                                    logger.info(f"Token address extracted for sell {self.signature[:8]}...: {self.token_address[:8]}...")
-                                break
-                        except Exception as e:
-                            logger.error(f"Error decoding instruction data for {self.signature[:8]}...: {e}")
-            
-            # Check logs for create instruction if not already categorized
-            if not self.is_buy and not self.is_sell:
-                for i, log in enumerate(logs):
-                    logger.debug(f"Log {i} for {self.signature[:8]}...: {log}")
-                    if "Program log: Instruction: Create" in log:
-                        self.is_create = True
-                        logger.info(f"Create transaction detected for {self.signature[:8]}...")
-                        break
-                    elif "buy" in log.lower() or "swap" in log.lower():
-                        self.is_buy = True
-                        logger.info(f"Buy/Swap keyword found in log for transaction {self.signature[:8]}...: {log[:100]}...")
-                        # Extract token address (placeholder logic)
-                        parts = log.split()
-                        for part in parts:
-                            if len(part) == 44:  # Typical length of Solana address
-                                self.token_address = part
-                                logger.info(f"Token address extracted for {self.signature[:8]}...: {part[:8]}...")
-                                break
-                        # Extract SOL amount (placeholder logic)
-                        for part in parts:
-                            if "SOL" in part:
-                                try:
-                                    self.amount_sol = float(part.split("SOL")[0])
-                                    logger.info(f"SOL amount extracted for {self.signature[:8]}...: {self.amount_sol}")
-                                except ValueError:
-                                    logger.info(f"Could not parse SOL amount from {part} for {self.signature[:8]}...")
-                                    pass
-                        break
-            
-            if not self.is_buy and not self.is_sell and not self.is_create:
-                logger.info(f"No buy/sell/create keywords or discriminators found for transaction {self.signature[:8]}...")
-        except Exception as e:
-            logger.error(f"Error parsing transaction data for {self.signature[:8]}...: {e}")
+        self.raw_data: Optional[Dict] = None
 
 
 class EnhancedWalletTracker:
-    """Tracks transactions of specified wallets to mimic their buying behavior with enhanced WebSocket subscriptions."""
+    """
+    Enhanced wallet tracker with robust WebSocket monitoring for pump.fun transactions.
+    """
     
     def __init__(self):
         self.settings = config_manager.get_settings()
-        self.websocket_url = "wss://api.mainnet-beta.solana.com"
-        if hasattr(self.settings, 'connection') and hasattr(self.settings.connection, 'websocket_url'):
-            self.websocket_url = self.settings.connection.websocket_url
+        
+        # Use the configured WebSocket endpoint from settings
+        self.websocket_url = self.settings.solana.websocket_endpoint
+        logger.info(f"Using WebSocket endpoint: {self.websocket_url}")
+        
         self.tracked_wallets: Set[str] = set(self.settings.tracking.wallets)
+        # Fix PublicKey initialization - use from_string for base58 addresses
         self.pump_program_id = PublicKey.from_string("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P")
         self.subscriptions: Dict[int, str] = {}
         self.transaction_cache: Set[str] = set()  # Prevent duplicate processing
@@ -143,10 +60,24 @@ class EnhancedWalletTracker:
         self.running: bool = False
         self.buy_callbacks: List[Callable[[str, str, float], None]] = []
         self.processed_signatures: Set[str] = set()
+        self.websocket_tasks: List[asyncio.Task] = []
         
         # Instruction discriminators for pump.fun
         self.BUY_DISCRIMINATOR = bytes([102, 6, 61, 18, 1, 218, 235, 234])
         self.SELL_DISCRIMINATOR = bytes([51, 230, 133, 164, 1, 127, 131, 173])
+        self.CREATE_DISCRIMINATOR = bytes([181, 157, 89, 67, 143, 182, 52, 72])
+        
+        # Transaction parser
+        self.parser = PumpFunTransactionParser()
+        
+        # Statistics tracking
+        self.stats = {
+            "transactions_detected": 0,
+            "buys_detected": 0,
+            "sells_detected": 0,
+            "creates_detected": 0,
+            "errors": 0
+        }
         
     async def start(self) -> None:
         """Start tracking specified wallets for transactions."""
@@ -161,639 +92,444 @@ class EnhancedWalletTracker:
         self.running = True
         logger.info(f"Starting enhanced wallet tracker for {len(self.tracked_wallets)} wallets")
         
-        # Connect to Solana WebSocket for wallet tracking
-        await self._connect_and_subscribe()
+        # Start WebSocket monitoring for each wallet
+        for wallet_address in self.tracked_wallets:
+            task = asyncio.create_task(self._monitor_wallet(wallet_address))
+            self.websocket_tasks.append(task)
         
     async def stop(self) -> None:
         """Stop tracking wallets."""
         self.running = False
         logger.info("Stopping wallet tracker")
         
-        # Unsubscribe from all subscriptions
-        for subscription_id in list(self.subscriptions.keys()):
-            try:
-                await connection_manager.unsubscribe(subscription_id)
-                del self.subscriptions[subscription_id]
-            except Exception as e:
-                logger.error(f"Error unsubscribing from subscription {subscription_id}: {e}")
+        # Cancel all WebSocket tasks
+        for task in self.websocket_tasks:
+            task.cancel()
         
-        # Close WebSocket connection if open
+        # Wait for tasks to complete
+        await asyncio.gather(*self.websocket_tasks, return_exceptions=True)
+        self.websocket_tasks.clear()
+        
+        # Close WebSocket if open
         if self.websocket and not self.websocket.closed:
             await self.websocket.close()
             self.websocket = None
     
-    async def _connect_and_subscribe(self) -> None:
-        """Connect to Solana WebSocket and subscribe to wallet transactions and program logs."""
-        try:
-            # Connect to Solana WebSocket
-            self.websocket = await connection_manager.connect_websocket()
-            if not self.websocket:
-                raise ValueError("Failed to connect to Solana WebSocket")
-            
-            logger.info("WebSocket connection established for wallet tracking")
-            
-            # Subscribe to each wallet and pump.fun program logs
-            for wallet_address in self.tracked_wallets:
-                try:
-                    # Define callbacks for this wallet
-                    callbacks = {
-                        'on_wallet_update': lambda data: asyncio.create_task(self._handle_wallet_update(wallet_address, data)),
-                        'on_pump_transaction': lambda data: asyncio.create_task(self._handle_pump_transaction(wallet_address, data)),
-                        'on_new_signature': lambda sig: asyncio.create_task(self._handle_new_signature(wallet_address, sig))
-                    }
+    async def _monitor_wallet(self, wallet_address: str) -> None:
+        """Monitor a specific wallet using WebSocket subscriptions."""
+        retry_count = 0
+        max_retries = 5
+        
+        while self.running and retry_count < max_retries:
+            try:
+                logger.info(f"Connecting to WebSocket for wallet {wallet_address[:8]}...")
+                
+                async with websockets.connect(self.websocket_url) as websocket:
+                    self.websocket = websocket
+                    logger.info("WebSocket connection established for wallet tracking")
                     
-                    # Subscribe to wallet and program logs
-                    asyncio.create_task(self._subscribe_to_wallet_and_program(wallet_address, callbacks))
-                except Exception as e:
-                    logger.error(f"Failed to subscribe to wallet {wallet_address[:8]}...: {e}")
-            
-            # Start a task to log WebSocket status periodically
-            asyncio.create_task(self._log_websocket_status())
-            
-        except Exception as e:
-            logger.error(f"Error connecting to Solana WebSocket for wallet tracking: {e}")
-            if self.running:
-                logger.info("Reconnecting to Solana WebSocket for wallet tracking...")
-                await asyncio.sleep(5)
-                await self._connect_and_subscribe()
-    
-    async def _log_websocket_status(self):
-        """Periodically log the status of the WebSocket connection."""
-        while self.running and self.websocket:
-            if self.websocket.closed:
-                logger.warning("WebSocket connection for wallet tracking is closed")
+                    # Subscribe to account changes
+                    account_sub_id = await self._subscribe_account(websocket, wallet_address)
+                    
+                    # Disable global logs subscription to prevent spam
+                    # Only monitor account changes and fetch transactions on demand
+                    logger.info("📌 Note: Global logs subscription disabled to prevent spam")
+                    logger.info("📌 Monitoring account changes and fetching transactions on demand")
+                    
+                    # Process messages
+                    await self._process_messages_account_only(websocket, wallet_address)
+                    
+            except asyncio.CancelledError:
+                logger.info(f"Monitoring cancelled for wallet {wallet_address[:8]}...")
                 break
-            else:
-                logger.debug("WebSocket connection for wallet tracking is active")
-            await asyncio.sleep(10)
+            except Exception as e:
+                retry_count += 1
+                logger.error(
+                    f"Error monitoring wallet {wallet_address[:8]}... (attempt {retry_count}/{max_retries}): {str(e)}",
+                    exc_info=True
+                )
+                if retry_count < max_retries:
+                    await asyncio.sleep(5 * retry_count)  # Exponential backoff
+                else:
+                    logger.error(f"Max retries reached for wallet {wallet_address[:8]}...")
     
-    async def _subscribe_to_wallet_and_program(self, wallet_address: str, callbacks: Dict[str, Callable]) -> None:
-        """
-        Subscribe to both wallet account changes AND pump.fun program logs.
-        This dual subscription ensures we catch all relevant transactions.
-        """
+    async def _subscribe_account(self, websocket, wallet_address: str) -> Optional[int]:
+        """Subscribe to account changes for a wallet."""
         try:
-            async with ws_connect(self.websocket_url) as websocket:
-                # 1. Subscribe to wallet account changes
-                wallet_sub_id = await self._subscribe_to_account(
-                    websocket, 
+            subscribe_msg = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "accountSubscribe",
+                "params": [
                     wallet_address,
-                    callbacks.get('on_wallet_update')
-                )
-                
-                # 2. Subscribe to pump.fun program logs
-                logs_sub_id = await self._subscribe_to_program_logs(
-                    websocket,
-                    callbacks.get('on_pump_transaction')
-                )
-                
-                # 3. Subscribe to specific wallet signatures
-                signature_sub_id = await self._subscribe_to_wallet_signatures(
-                    websocket,
-                    wallet_address,
-                    callbacks.get('on_new_signature')
-                )
-                
-                # Keep connection alive and process messages
-                await self._process_websocket_messages(websocket, callbacks)
-        except Exception as e:
-            logger.error(f"Error in subscription for wallet {wallet_address[:8]}...: {e}")
-            if self.running:
-                await asyncio.sleep(5)
-                await self._subscribe_to_wallet_and_program(wallet_address, callbacks)
-    
-    async def _subscribe_to_account(self, websocket, address: str, callback: Callable) -> int:
-        """
-        Subscribe to account changes - catches balance updates and token account changes.
-        """
-        subscribe_message = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "accountSubscribe",
-            "params": [
-                address,
-                {
-                    "encoding": "jsonParsed",
-                    "commitment": "confirmed"
-                }
-            ]
-        }
-        
-        await websocket.send(json.dumps(subscribe_message))
-        response = await websocket.recv()
-        result = json.loads(response)
-        
-        subscription_id = result.get('result')
-        self.subscriptions[subscription_id] = f"account_{address}"
-        
-        logger.info(f"Subscribed to account {address[:8]}... with ID: {subscription_id}")
-        return subscription_id
-    
-    async def _subscribe_to_program_logs(self, websocket, callback: Callable) -> int:
-        """
-        Subscribe to pump.fun program logs - this catches ALL pump.fun transactions
-        including those from tracked wallets.
-        """
-        subscribe_message = {
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "logsSubscribe",
-            "params": [
-                {
-                    "mentions": [str(self.pump_program_id)]
-                },
-                {
-                    "commitment": "confirmed"
-                }
-            ]
-        }
-        
-        await websocket.send(json.dumps(subscribe_message))
-        response = await websocket.recv()
-        result = json.loads(response)
-        
-        subscription_id = result.get('result')
-        self.subscriptions[subscription_id] = "pump_program_logs"
-        
-        logger.info(f"Subscribed to pump.fun program logs with ID: {subscription_id}")
-        return subscription_id
-    
-    async def _subscribe_to_wallet_signatures(self, websocket, wallet_address: str, callback: Callable) -> Optional[int]:
-        """
-        Subscribe to new signatures for a specific wallet.
-        This provides real-time transaction notifications.
-        """
-        subscribe_message = {
-            "jsonrpc": "2.0",
-            "id": 3,
-            "method": "signatureSubscribe",
-            "params": [
-                wallet_address,
-                {
-                    "commitment": "confirmed",
-                    "enableReceivedNotification": False
-                }
-            ]
-        }
-        
-        # Note: signatureSubscribe might not be available on all RPC providers
-        # Use accountSubscribe as primary method
-        try:
-            await websocket.send(json.dumps(subscribe_message))
-            response = await websocket.recv()
+                    {
+                        "encoding": "jsonParsed",
+                        "commitment": "confirmed"
+                    }
+                ]
+            }
+            
+            await websocket.send(json.dumps(subscribe_msg))
+            response = await asyncio.wait_for(websocket.recv(), timeout=5.0)
             result = json.loads(response)
-            subscription_id = result.get('result', None)
-            if subscription_id:
-                self.subscriptions[subscription_id] = f"signature_{wallet_address}"
-                logger.info(f"Subscribed to signatures for wallet {wallet_address[:8]}... with ID: {subscription_id}")
+            
+            if "result" in result:
+                sub_id = result["result"]
+                self.subscriptions[sub_id] = f"account_{wallet_address}"
+                logger.info(f"Subscribed to account {wallet_address[:8]}... with ID: {sub_id}")
+                return sub_id
             else:
-                logger.warning("Signature subscription not available, relying on account and logs subscriptions")
-            return subscription_id
+                logger.error(f"Failed to subscribe to account: {result}")
+                return None
+                
+        except asyncio.TimeoutError:
+            logger.error("Timeout waiting for account subscription response")
+            return None
         except Exception as e:
-            logger.warning(f"Signature subscription not available for {wallet_address[:8]}...: {e}")
+            logger.error(f"Error subscribing to account: {str(e)}", exc_info=True)
             return None
     
-    async def _process_websocket_messages(self, websocket, callbacks):
-        """
-        Main message processing loop with proper error handling.
-        """
+    async def _process_messages_account_only(self, websocket, wallet_address: str) -> None:
+        """Process incoming WebSocket messages - account notifications only."""
         while self.running:
             try:
-                message = await websocket.recv()
+                message = await asyncio.wait_for(websocket.recv(), timeout=30.0)
                 data = json.loads(message)
                 
                 # Handle subscription confirmations
-                if 'id' in data and 'result' in data:
-                    logger.info(f"Subscription confirmed: {data}")
+                if "id" in data and "result" in data:
+                    logger.debug(f"Subscription confirmed: {data}")
                     continue
+                
+                # Handle account notifications
+                method = data.get("method")
+                if method == "accountNotification":
+                    logger.info(f"Account changed for wallet {wallet_address[:8]}...")
+                    await self._handle_account_notification(data, wallet_address)
                     
-                # Handle notifications
-                if data.get('method') == 'accountNotification':
-                    await self._handle_account_notification(data, callbacks)
+                    # When account changes, check for new pump.fun transactions
+                    await self._check_pump_transactions_for_wallet(wallet_address)
                     
-                elif data.get('method') == 'logsNotification':
-                    await self._handle_logs_notification(data, callbacks)
-                    
-                elif data.get('method') == 'signatureNotification':
-                    await self._handle_signature_notification(data, callbacks)
-                    
-            except asyncio.CancelledError:
+            except asyncio.TimeoutError:
+                # Send ping to keep connection alive
+                try:
+                    await websocket.ping()
+                except:
+                    break
+            except websockets.exceptions.ConnectionClosed:
+                logger.warning("WebSocket connection closed")
                 break
             except Exception as e:
-                logger.error(f"Error processing WebSocket message: {e}")
-                await asyncio.sleep(1)
+                logger.error(f"Error processing message: {str(e)}", exc_info=True)
     
-    async def _handle_account_notification(self, data: Dict, callbacks):
-        """Process account notification for wallet updates."""
-        params = data.get('params', {})
-        result = params.get('result', {})
-        logger.info(f"Account notification received: {result}")
-        if callbacks.get('on_wallet_update'):
-            await callbacks['on_wallet_update'](result)
-    
-    async def _handle_logs_notification(self, data: Dict, callbacks):
-        """
-        Process logs notification - this is where pump.fun transactions are detected.
-        """
-        params = data.get('params', {})
-        result = params.get('result', {})
-        
-        # Extract log data
-        log_data = {
-            'signature': result.get('value', {}).get('signature'),
-            'logs': result.get('value', {}).get('logs', []),
-            'err': result.get('value', {}).get('err'),
-            'slot': result.get('context', {}).get('slot')
-        }
-        
-        # Check if signature is already processed
-        if log_data['signature'] in self.transaction_cache:
-            return
-            
-        self.transaction_cache.add(log_data['signature'])
-        
-        # Trigger callback
-        if callbacks.get('on_pump_transaction'):
-            await callbacks['on_pump_transaction'](log_data)
-    
-    async def _handle_signature_notification(self, data: Dict, callbacks):
-        """Process signature notification for new transactions."""
-        params = data.get('params', {})
-        result = params.get('result', {})
-        signature = result.get('value', {}).get('signature')
-        logger.info(f"New signature notification: {signature[:8]}...")
-        if callbacks.get('on_new_signature'):
-            await callbacks['on_new_signature'](signature)
-    
-    async def _handle_wallet_update(self, wallet_address: str, data: Any) -> None:
-        """
-        Process updates for a tracked wallet with immediate transaction fetching.
-        """
+    async def _handle_account_notification(self, data: Dict, wallet_address: str) -> None:
+        """Handle account change notifications."""
         try:
             logger.info(f"Processing update for wallet {wallet_address[:8]}...")
-            # Log the raw data for debugging
-            logger.debug(f"Raw update data for wallet {wallet_address[:8]}...: {data}")
             
-            # Handle different data formats
-            if isinstance(data, list):
-                logger.debug(f"Received list data for wallet {wallet_address[:8]}..., cannot process directly")
-                return
-            elif not isinstance(data, dict):
-                logger.error(f"Unexpected data type for wallet update: {type(data)}")
-                return
+            # Extract the value from notification
+            params = data.get("params", {})
+            result = params.get("result", {})
             
-            # Fetch recent signatures immediately upon account change
-            signatures = await connection_manager.get_signatures_for_address(wallet_address, limit=1)
-            if not signatures:
-                logger.info(f"No new signatures in update for {wallet_address[:8]}...")
-                return
-            
-            latest_signature = signatures[0].signature
-            if latest_signature in self.processed_signatures:
-                logger.debug(f"Signature {latest_signature[:8]}... already processed for {wallet_address[:8]}...")
-                return
-            
-            self.processed_signatures.add(latest_signature)
-            logger.info(f"Fetching transaction for new signature {latest_signature[:8]}... for wallet {wallet_address[:8]}...")
-            
-            transaction_data = await connection_manager.get_transaction(latest_signature)
-            if not transaction_data:
-                logger.error(f"Failed to fetch transaction data for {latest_signature[:8]}...")
-                return
-            
-            import time
-            timestamp = time.time()
-            transaction = WalletTransaction(transaction_data, latest_signature, timestamp)
-            
-            if transaction.is_buy and transaction.token_address:
-                logger.info(
-                    f"Buy transaction detected for wallet {wallet_address[:8]}...: {transaction.token_address[:8]}...",
-                    amount_sol=transaction.amount_sol
-                )
-                
-                # Notify callbacks about buy transaction
-                for callback in self.buy_callbacks:
-                    try:
-                        callback(wallet_address, transaction.token_address, transaction.amount_sol)
-                    except Exception as e:
-                        logger.error(f"Error in buy callback for wallet {wallet_address[:8]}...: {e}")
-                
-                # Mimic the buy behavior
-                asyncio.create_task(self._mimic_buy(wallet_address, transaction.token_address, transaction.amount_sol))
-            elif transaction.is_sell and transaction.token_address:
-                logger.info(
-                    f"Sell transaction detected for wallet {wallet_address[:8]}...: {transaction.token_address[:8]}..."
-                )
-            elif transaction.is_create:
-                logger.info(
-                    f"Create transaction detected for wallet {wallet_address[:8]}..."
-                )
-            else:
-                logger.info(f"No buy/sell/create transaction detected for {wallet_address[:8]}... in update with signature {latest_signature[:8]}...")
+            # When account changes, fetch recent transactions
+            await self._check_recent_transactions(wallet_address)
             
         except Exception as e:
-            logger.error(f"Error processing wallet update for {wallet_address[:8]}...: {e}")
+            logger.error(f"Error handling account notification: {str(e)}", exc_info=True)
     
-    async def _handle_pump_transaction(self, wallet_address: str, log_data: Dict) -> None:
-        """
-        Handle pump.fun transaction from logs.
-        This is where most detections will come from.
-        """
+    async def _check_recent_transactions(self, wallet_address: str) -> None:
+        """Check recent transactions for a wallet."""
         try:
-            # Parse transaction from logs using the parser
-            parser = PumpFunTransactionParser()
-            parsed = parser.parse_transaction_from_logs(log_data)
-            
-            if not parsed:
-                return
-                
-            # Enrich with wallet info
-            parsed['tracked_wallet'] = wallet_address
-            
-            # Route to appropriate action based on type
-            if parsed['type'] == 'buy':
-                logger.info(f"🟢 BUY detected from wallet {wallet_address[:8]}... - {parsed['signature'][:8]}...")
-                # Extract token address and amount if available, otherwise fetch full details
-                if 'mint' in parsed and 'max_sol_cost_ui' in parsed:
-                    token_address = parsed['mint']
-                    amount_sol = parsed['max_sol_cost_ui']
-                    for callback in self.buy_callbacks:
-                        try:
-                            callback(wallet_address, token_address, amount_sol)
-                        except Exception as e:
-                            logger.error(f"Error in buy callback for wallet {wallet_address[:8]}...: {e}")
-                    asyncio.create_task(self._mimic_buy(wallet_address, token_address, amount_sol))
-            elif parsed['type'] == 'sell':
-                logger.info(f"🔴 SELL detected from wallet {wallet_address[:8]}... - {parsed['signature'][:8]}...")
-            elif parsed['type'] == 'create':
-                logger.info(f"🚀 TOKEN CREATE detected from wallet {wallet_address[:8]}... - {parsed['signature'][:8]}...")
-                
-        except Exception as e:
-            logger.error(f"Error handling pump transaction for wallet {wallet_address[:8]}...: {e}")
-    
-    async def _handle_new_signature(self, wallet_address: str, signature: str) -> None:
-        """Handle new signature notification for a wallet."""
-        try:
-            logger.info(f"New signature for wallet {wallet_address[:8]}...: {signature[:8]}...")
-            if signature in self.processed_signatures:
-                logger.debug(f"Signature {signature[:8]}... already processed for {wallet_address[:8]}...")
-                return
-                
-            self.processed_signatures.add(signature)
-            transaction_data = await connection_manager.get_transaction(signature)
-            if not transaction_data:
-                logger.error(f"Failed to fetch transaction data for {signature[:8]}...")
-                return
-                
-            import time
-            timestamp = time.time()
-            transaction = WalletTransaction(transaction_data, signature, timestamp)
-            
-            if transaction.is_buy and transaction.token_address:
-                logger.info(
-                    f"Buy transaction detected for wallet {wallet_address[:8]}...: {transaction.token_address[:8]}...",
-                    amount_sol=transaction.amount_sol
-                )
-                
-                for callback in self.buy_callbacks:
-                    try:
-                        callback(wallet_address, transaction.token_address, transaction.amount_sol)
-                    except Exception as e:
-                        logger.error(f"Error in buy callback for wallet {wallet_address[:8]}...: {e}")
-                
-                asyncio.create_task(self._mimic_buy(wallet_address, transaction.token_address, transaction.amount_sol))
-            elif transaction.is_sell and transaction.token_address:
-                logger.info(
-                    f"Sell transaction detected for wallet {wallet_address[:8]}...: {transaction.token_address[:8]}..."
-                )
-            elif transaction.is_create:
-                logger.info(
-                    f"Create transaction detected for wallet {wallet_address[:8]}..."
-                )
-        except Exception as e:
-            logger.error(f"Error handling new signature for wallet {wallet_address[:8]}...: {e}")
-    
-    async def _mimic_buy(self, wallet_address: str, token_address: str, amount_sol: float) -> None:
-        """
-        Mimic buy behavior of tracked wallet.
-        
-        Args:
-            wallet_address: Wallet that made the purchase
-            token_address: Token that was bought
-            amount_sol: Amount in SOL that was spent
-        """
-        try:
-            # Check if we have capacity to buy
-            if len(strategy_engine.active_positions) >= strategy_engine.max_positions:
-                logger.warning(
-                    f"Cannot mimic buy for {token_address[:8]}... from wallet {wallet_address[:8]}... - max positions reached",
-                    max_positions=strategy_engine.max_positions
-                )
+            # FIX: Properly await the async get_rpc_client() call
+            client = await connection_manager.get_rpc_client()
+            if not client:
+                logger.error("No RPC client available")
                 return
             
-            # Check balance
-            balance = await wallet_manager.get_balance()
-            buy_amount = min(amount_sol, strategy_engine.max_buy_amount_sol)
-            if balance < buy_amount * 1.2:  # Add 20% buffer for fees
-                logger.warning(
-                    f"Insufficient SOL balance to mimic buy for {token_address[:8]}...: {balance:.4f} SOL",
-                    required=buy_amount * 1.2
-                )
-                return
-            
-            # Fetch token details
-            token_data = await connection_manager.fetch_pump_token_data(token_address)
-            if not token_data:
-                logger.error(f"Failed to fetch token data for {token_address[:8]}...")
-                return
-            
-            token_info = TokenInfo(token_data)
-            
-            # Execute buy
-            logger.info(
-                f"Mimicking buy for {token_info.symbol} from wallet {wallet_address[:8]}... with {buy_amount} SOL",
-                token=token_address
+            # Get recent signatures
+            response = await client.get_signatures_for_address(
+                PublicKey.from_string(wallet_address),
+                limit=5
             )
             
-            success = await strategy_engine.execute_buy(token_info)
-            if success:
-                logger.info(
-                    f"Successfully mimicked buy for {token_info.symbol} from wallet {wallet_address[:8]}...",
-                    token=token_address,
-                    amount_sol=buy_amount
-                )
-            else:
-                logger.error(
-                    f"Failed to mimic buy for {token_info.symbol} from wallet {wallet_address[:8]}...",
-                    token=token_address
+            if not response or not response.value:
+                return
+            
+            for sig_info in response.value:
+                signature = str(sig_info.signature)
+                
+                if signature in self.processed_signatures:
+                    continue
+                
+                self.processed_signatures.add(signature)
+                
+                # Fetch and analyze transaction
+                tx_response = await client.get_transaction(
+                    sig_info.signature,
+                    encoding="jsonParsed",
+                    commitment=Confirmed,
+                    max_supported_transaction_version=0
                 )
                 
+                if tx_response and tx_response.value:
+                    await self._analyze_transaction(tx_response.value, wallet_address, signature)
+                    
         except Exception as e:
-            logger.error(f"Error mimicking buy for token {token_address[:8]}... from wallet {wallet_address[:8]}...: {e}")
+            logger.error(f"Error checking recent transactions: {str(e)}", exc_info=True)
+            self.stats["errors"] += 1
+    
+    async def _check_pump_transactions_for_wallet(self, wallet_address: str) -> None:
+        """Check recent transactions for pump.fun operations when wallet changes."""
+        try:
+            # FIX: Properly await the async get_rpc_client() call
+            client = await connection_manager.get_rpc_client()
+            if not client:
+                logger.error("No RPC client available")
+                return
+            
+            # Get the last few transactions
+            response = await client.get_signatures_for_address(
+                PublicKey.from_string(wallet_address),
+                limit=3  # Check last 3 transactions
+            )
+            
+            if not response or not response.value:
+                return
+            
+            for sig_info in response.value:
+                signature = str(sig_info.signature)
+                
+                if signature in self.processed_signatures:
+                    continue
+                
+                # Fetch transaction details
+                tx_response = await client.get_transaction(
+                    sig_info.signature,
+                    encoding="jsonParsed",
+                    commitment=Confirmed,
+                    max_supported_transaction_version=0
+                )
+                
+                if tx_response and tx_response.value:
+                    # Handle solders object - convert to JSON
+                    tx_json = tx_response.value.to_json()
+                    tx_data = json.loads(tx_json)
+                    
+                    # Check if it's a pump.fun transaction
+                    if self._is_pump_fun_transaction(tx_data):
+                        self.processed_signatures.add(signature)
+                        logger.info(f"Found pump.fun transaction: {signature[:8]}...")
+                        self.stats["transactions_detected"] += 1
+                        
+                        # Analyze and process the transaction
+                        await self._analyze_transaction(tx_data, wallet_address, signature)
+                        
+        except Exception as e:
+            logger.error(f"Error checking pump transactions: {str(e)}", exc_info=True)
+            self.stats["errors"] += 1
+    
+    def _is_pump_fun_transaction(self, tx_data: dict) -> bool:
+        """Check if a transaction involves pump.fun program."""
+        try:
+            transaction = tx_data.get("transaction", {})
+            message = transaction.get("message", {})
+            instructions = message.get("instructions", [])
+            
+            pump_program_str = str(self.pump_program_id)
+            
+            for instruction in instructions:
+                if instruction.get("programId") == pump_program_str:
+                    return True
+                    
+            return False
+        except:
+            return False
+    
+    async def _analyze_transaction(self, tx_data: Dict, wallet_address: str, signature: str) -> None:
+        """Analyze a transaction for pump.fun operations."""
+        try:
+            # Handle both dictionary and solders object formats
+            if hasattr(tx_data, 'to_json'):
+                tx_json = tx_data.to_json()
+                tx_data = json.loads(tx_json)
+            
+            meta = tx_data.get("meta", {})
+            if meta.get("err"):
+                return  # Skip failed transactions
+            
+            transaction = tx_data.get("transaction", {})
+            message = transaction.get("message", {})
+            instructions = message.get("instructions", [])
+            
+            for instruction in instructions:
+                # Check if it's a pump.fun instruction
+                program_id = instruction.get("programId")
+                if program_id == str(self.pump_program_id):
+                    # Parse the instruction
+                    tx_info = self.parser.parse_instruction(instruction, wallet_address, signature)
+                    if tx_info:
+                        await self._process_pump_transaction(tx_info)
+                        
+        except Exception as e:
+            logger.error(f"Error analyzing transaction: {str(e)}", exc_info=True)
+            self.stats["errors"] += 1
+    
+    async def _process_pump_transaction(self, tx_info: Dict) -> None:
+        """Process a pump.fun transaction."""
+        operation = tx_info.get("operation")
+        wallet = tx_info.get("wallet")
+        token = tx_info.get("token", "unknown")
+        amount_sol = tx_info.get("amount_sol", 0)
+        signature = tx_info.get("signature")
+        
+        if operation == "buy":
+            self.stats["buys_detected"] += 1
+            logger.info(
+                f"🟢 BUY detected: Wallet {wallet[:8]}... bought token {token[:8]}... for {amount_sol:.4f} SOL"
+            )
+            
+            # Trigger buy callbacks
+            for callback in self.buy_callbacks:
+                try:
+                    if asyncio.iscoroutinefunction(callback):
+                        await callback(wallet, token, amount_sol)
+                    else:
+                        callback(wallet, token, amount_sol)
+                except Exception as e:
+                    logger.error(f"Error in buy callback: {str(e)}", exc_info=True)
+                    
+        elif operation == "sell":
+            self.stats["sells_detected"] += 1
+            logger.info(
+                f"🔴 SELL detected: Wallet {wallet[:8]}... sold token {token[:8]}... for {amount_sol:.4f} SOL"
+            )
+            
+        elif operation == "create":
+            self.stats["creates_detected"] += 1
+            logger.info(
+                f"✨ CREATE detected: Wallet {wallet[:8]}... created token {token[:8]}..."
+            )
     
     def register_buy_callback(self, callback: Callable[[str, str, float], None]) -> None:
-        """
-        Register a callback for buy transactions from tracked wallets.
-        
-        Args:
-            callback: Function to call when buy detected (params: wallet_address, token_address, amount_sol)
-        """
+        """Register a callback for buy transactions."""
         self.buy_callbacks.append(callback)
         logger.info(f"Registered wallet buy callback. Total callbacks: {len(self.buy_callbacks)}")
     
     def add_tracked_wallet(self, wallet_address: str) -> None:
-        """
-        Add a wallet to track.
-        
-        Args:
-            wallet_address: Wallet address to track
-        """
+        """Add a wallet to track."""
         if wallet_address not in self.tracked_wallets:
             self.tracked_wallets.add(wallet_address)
             logger.info(f"Added wallet to track: {wallet_address[:8]}...")
             
-            # If already running, subscribe to this wallet
+            # If already running, start monitoring this wallet
             if self.running:
-                asyncio.create_task(self._subscribe_to_wallet_and_program(wallet_address, {
-                    'on_wallet_update': lambda data: asyncio.create_task(self._handle_wallet_update(wallet_address, data)),
-                    'on_pump_transaction': lambda data: asyncio.create_task(self._handle_pump_transaction(wallet_address, data)),
-                    'on_new_signature': lambda sig: asyncio.create_task(self._handle_new_signature(wallet_address, sig))
-                }))
+                task = asyncio.create_task(self._monitor_wallet(wallet_address))
+                self.websocket_tasks.append(task)
     
-    def remove_tracked_wallet(self, wallet_address: str) -> None:
-        """
-        Remove a wallet from tracking.
-        
-        Args:
-            wallet_address: Wallet address to stop tracking
-        """
-        if wallet_address in self.tracked_wallets:
-            self.tracked_wallets.remove(wallet_address)
-            logger.info(f"Removed wallet from tracking: {wallet_address[:8]}...")
-            
-            # Unsubscribe if we have a subscription
-            for subscription_id, desc in list(self.subscriptions.items()):
-                if desc.startswith(f"account_{wallet_address}") or desc.startswith(f"signature_{wallet_address}"):
-                    asyncio.create_task(connection_manager.unsubscribe(subscription_id))
-                    del self.subscriptions[subscription_id]
+    def get_stats(self) -> Dict[str, int]:
+        """Get tracking statistics."""
+        return self.stats.copy()
 
 
 class PumpFunTransactionParser:
-    """Parser for pump.fun transactions to identify buy/sell/create operations."""
+    """Parser for pump.fun transactions."""
     
     def __init__(self):
-        self.pump_program_id = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
         self.BUY_DISCRIMINATOR = bytes([102, 6, 61, 18, 1, 218, 235, 234])
         self.SELL_DISCRIMINATOR = bytes([51, 230, 133, 164, 1, 127, 131, 173])
-        
-    def parse_transaction_from_logs(self, log_data: Dict) -> Optional[Dict]:
-        """
-        Parse pump.fun transaction from WebSocket log notification.
-        This is the primary method for real-time detection.
-        """
+        self.CREATE_DISCRIMINATOR = bytes([181, 157, 89, 67, 143, 182, 52, 72])
+    
+    def parse_logs(self, logs: List[str], signature: str) -> Optional[Dict]:
+        """Parse pump.fun transaction from logs."""
         try:
-            signature = log_data.get('signature')
-            logs = log_data.get('logs', [])
-            err = log_data.get('err')
-            
-            if err:
-                return None
-                
-            # Check if this is a pump.fun transaction
-            if not any(self.pump_program_id in log for log in logs):
-                return None
-                
-            # Look for specific pump.fun events in logs
-            transaction_type = self._identify_transaction_type_from_logs(logs)
-            
-            if transaction_type:
-                return {
-                    'signature': signature,
-                    'type': transaction_type,
-                    'logs': logs,
-                    'timestamp': asyncio.get_event_loop().time()
-                }
-                
+            # Look for pump.fun specific logs
+            for log in logs:
+                if "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke" in log:
+                    # This is a pump.fun transaction
+                    result = {"signature": signature}
+                    
+                    # Look for operation indicators in logs
+                    logs_str = " ".join(logs).lower()
+                    
+                    if "instruction: buy" in logs_str:
+                        result["operation"] = "buy"
+                    elif "instruction: sell" in logs_str:
+                        result["operation"] = "sell"
+                    elif "instruction: create" in logs_str or "initialize" in logs_str:
+                        result["operation"] = "create"
+                    else:
+                        # Try to infer from other log patterns
+                        if "swap" in logs_str and "sol" in logs_str:
+                            # Could be buy or sell, need more context
+                            if "transfer" in logs_str and "to" in logs_str:
+                                result["operation"] = "buy"
+                            else:
+                                result["operation"] = "sell"
+                        else:
+                            result["operation"] = "unknown"
+                    
+                    return result
+                    
+            return None
         except Exception as e:
-            logger.error(f"Error parsing transaction logs: {e}")
+            logger.error(f"Error parsing logs: {str(e)}")
             return None
     
-    def _identify_transaction_type_from_logs(self, logs: List[str]) -> Optional[str]:
-        """
-        Identify transaction type from program logs.
-        Pump.fun emits specific log messages for different operations.
-        """
-        for log in logs:
-            if "Program log: Instruction: Buy" in log:
-                return "buy"
-            elif "Program log: Instruction: Sell" in log:
-                return "sell"
-            elif "Program log: Instruction: Create" in log:
-                return "create"
-                
-        # If no clear log message, we need to fetch full transaction
-        return "unknown"
-    
-    async def parse_transaction_details(self, connection, signature: str, tracked_wallet: str) -> Optional[Dict]:
-        """
-        Fetch and parse full transaction details when needed.
-        This provides complete information about the transaction.
-        """
+    def parse_instruction(self, instruction: Dict, wallet: str, signature: str) -> Optional[Dict]:
+        """Parse pump.fun instruction."""
         try:
-            # Fetch transaction with full details
-            transaction = await connection.get_transaction(
-                signature,
-                encoding="jsonParsed",
-                max_supported_transaction_version=0
-            )
-            
-            if not transaction or not transaction['result']:
+            # Get instruction data
+            data = instruction.get("data")
+            if not data:
                 return None
-                
-            tx_data = transaction['result']
-            meta = tx_data.get('meta', {})
-            transaction_message = tx_data.get('transaction', {}).get('message', {})
             
-            # Parse instructions to find pump.fun operations
-            parsed_info = self._parse_pump_instructions(
-                transaction_message,
-                meta,
-                tracked_wallet
-            )
+            # Try different data formats
+            operation = "unknown"
+            token = "unknown"
+            amount_sol = 0.0
             
-            if parsed_info:
-                parsed_info['signature'] = signature
-                parsed_info['slot'] = tx_data.get('slot')
-                parsed_info['blockTime'] = tx_data.get('blockTime')
+            # Check if it's parsed instruction
+            parsed = instruction.get("parsed")
+            if parsed:
+                # Extract info from parsed instruction
+                info = parsed.get("info", {})
+                inst_type = parsed.get("type", "").lower()
                 
-            return parsed_info
+                if "transfer" in inst_type or "swap" in inst_type:
+                    operation = "buy"  # Simplified - would need more context
+                    amount_sol = info.get("lamports", 0) / 1e9 if "lamports" in info else 0
+            
+            else:
+                # Try to decode base58 data
+                try:
+                    if isinstance(data, str):
+                        decoded = base58.b58decode(data)
+                        if len(decoded) >= 8:
+                            discriminator = decoded[:8]
+                            
+                            if discriminator == self.BUY_DISCRIMINATOR:
+                                operation = "buy"
+                            elif discriminator == self.SELL_DISCRIMINATOR:
+                                operation = "sell"
+                            elif discriminator == self.CREATE_DISCRIMINATOR:
+                                operation = "create"
+                except:
+                    pass
+            
+            return {
+                "operation": operation,
+                "wallet": wallet,
+                "signature": signature,
+                "token": token,
+                "amount_sol": amount_sol
+            }
             
         except Exception as e:
-            logger.error(f"Error fetching transaction {signature}: {e}")
+            logger.error(f"Error parsing instruction: {str(e)}")
             return None
-    
-    def _parse_pump_instructions(self, message: Dict, meta: Dict, tracked_wallet: str) -> Optional[Dict]:
-        """
-        Parse pump.fun instructions from transaction message.
-        This identifies the specific operation type and extracts relevant data.
-        """
-        instructions = message.get('instructions', [])
-        account_keys = message.get('accountKeys', [])
-        
-        for idx, instruction in enumerate(instructions):
-            # Check if this is a pump.fun instruction
-            program_id = self._get_program_id(instruction, account_keys)
-            
-            if program_id != self.pump_program_id:
-                continue
-                
-            # Decode instruction data
-            instruction_data = self._decode_instruction_data(instruction, account_keys)
-            
-            if not instruction_data:
-                return None
 
-# Global wallet tracker instance (will be initialized later)
+
+# Global wallet tracker instance
 wallet_tracker = None
 
 def initialize_wallet_tracker():

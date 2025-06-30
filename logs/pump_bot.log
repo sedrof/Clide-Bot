@@ -1,70 +1,109 @@
-
-2025-06-30 08:20:27,371 - config - INFO - {"event": "Configuration validated successfully", "logger": "config", "level": "info", "timestamp": "2025-06-30T15:20:27.370792Z"}
-2025-06-30 08:20:28,119 - connection - INFO - {"event": "Connection manager initialized with 1 RPC endpoints", "logger": "connection", "level": "info", "timestamp": "2025-06-30T15:20:28.119190Z"}
-2025-06-30 08:20:28,133 - cli_ui - INFO - {"event": "Starting UI live display", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:28.133359Z"}
-2025-06-30 08:20:28,462 - cli_ui - INFO - {"event": "UI live display started", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:28.462168Z"}
-2025-06-30 08:20:30,288 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:20:30,751 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:20:30,756 - connection - INFO - {"event": "Connected to RPC endpoint: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE", "logger": "connection", "level": "info", "timestamp": "2025-06-30T15:20:30.756161Z"}
-2025-06-30 08:20:31,101 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:20:31,112 - wallet - INFO - {"public_key": "4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2", "event": "Keypair loaded successfully", "logger": "wallet", "level": "info", "timestamp": "2025-06-30T15:20:31.112306Z"}
-2025-06-30 08:20:31,115 - wallet - INFO - {"public_key": "4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2", "event": "Wallet manager initialized", "logger": "wallet", "level": "info", "timestamp": "2025-06-30T15:20:31.115023Z"}
-2025-06-30 08:20:31,461 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:20:31,467 - wallet - INFO - {"event": "Wallet validation passed. Balance: 0.118000 SOL", "logger": "wallet", "level": "info", "timestamp": "2025-06-30T15:20:31.467345Z"}
-2025-06-30 08:20:31,470 - pump_monitor - INFO - {"event": "Starting pump.fun monitor", "logger": "pump_monitor", "level": "info", "timestamp": "2025-06-30T15:20:31.470806Z"}
-2025-06-30 08:20:31,473 - pump_monitor - INFO - {"event": "Starting targeted REST API polling for pump.fun data", "logger": "pump_monitor", "level": "info", "timestamp": "2025-06-30T15:20:31.473316Z"}
-2025-06-30 08:20:31,475 - pump_monitor - INFO - {"event": "Targeted REST API polling started", "logger": "pump_monitor", "level": "info", "timestamp": "2025-06-30T15:20:31.475543Z"}
-2025-06-30 08:20:31,477 - price_tracker - INFO - {"event": "Starting price tracker", "logger": "price_tracker", "level": "info", "timestamp": "2025-06-30T15:20:31.477247Z"}
-2025-06-30 08:20:31,479 - volume_analyzer - INFO - {"event": "Starting volume analyzer", "logger": "volume_analyzer", "level": "info", "timestamp": "2025-06-30T15:20:31.478966Z"}
-2025-06-30 08:20:31,491 - event_processor - INFO - {"event": "Starting event processor", "logger": "event_processor", "level": "info", "timestamp": "2025-06-30T15:20:31.491267Z"}
-2025-06-30 08:20:31,493 - event_processor - ERROR - {"error_count": 1, "event": "Error registering callbacks: name 'wallet_tracker' is not defined", "logger": "event_processor", "level": "error", "timestamp": "2025-06-30T15:20:31.493217Z"}
-2025-06-30 08:20:31,497 - wallet_tracker - INFO - {"event": "Starting enhanced wallet tracker for 1 wallets", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T15:20:31.497679Z"}
-2025-06-30 08:20:32,737 - connection - INFO - {"event": "Connected to Solana WebSocket", "logger": "connection", "level": "info", "timestamp": "2025-06-30T15:20:32.737313Z"}
-2025-06-30 08:20:32,742 - wallet_tracker - INFO - {"event": "WebSocket connection established for wallet tracking", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T15:20:32.742133Z"}
-2025-06-30 08:20:32,744 - strategy - INFO - {"event": "Starting strategy engine", "logger": "strategy", "level": "info", "timestamp": "2025-06-30T15:20:32.744125Z"}
-2025-06-30 08:20:32,745 - main - INFO - {"event": "Solana pump.fun sniping bot started successfully", "logger": "main", "level": "info", "timestamp": "2025-06-30T15:20:32.745525Z"}
-2025-06-30 08:20:33,474 - cli_ui - INFO - {"event": "Balance updated: 0.118000242 SOL", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:33.473975Z"}
-2025-06-30 08:20:33,478 - cli_ui - INFO - {"event": "UI updated with new balance", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:33.478804Z"}
-2025-06-30 08:20:34,803 - wallet_tracker - ERROR - {"error_count": 1, "event": "Error in subscription for wallet DfyUYAcP...: 1", "logger": "wallet_tracker", "level": "error", "timestamp": "2025-06-30T15:20:34.803516Z"}
-2025-06-30 08:20:39,410 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:20:39,438 - cli_ui - INFO - {"event": "Balance updated: 0.118000242 SOL", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:39.438236Z"}
-2025-06-30 08:20:39,442 - cli_ui - INFO - {"event": "UI updated with new balance", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:39.442038Z"}
-2025-06-30 08:20:41,721 - wallet_tracker - ERROR - {"error_count": 2, "event": "Error in subscription for wallet DfyUYAcP...: 1", "logger": "wallet_tracker", "level": "error", "timestamp": "2025-06-30T15:20:41.721452Z"}
-2025-06-30 08:20:45,929 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:20:45,953 - cli_ui - INFO - {"event": "Balance updated: 0.118000242 SOL", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:45.953431Z"}
-2025-06-30 08:20:45,955 - cli_ui - INFO - {"event": "UI updated with new balance", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:45.955660Z"}
-2025-06-30 08:20:48,854 - wallet_tracker - ERROR - {"error_count": 3, "event": "Error in subscription for wallet DfyUYAcP...: 1", "logger": "wallet_tracker", "level": "error", "timestamp": "2025-06-30T15:20:48.853846Z"}
-2025-06-30 08:20:52,186 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:20:52,195 - cli_ui - INFO - {"event": "Balance updated: 0.118000242 SOL", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:52.195122Z"}
-2025-06-30 08:20:52,199 - cli_ui - INFO - {"event": "UI updated with new balance", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:52.199327Z"}
-2025-06-30 08:20:55,677 - wallet_tracker - ERROR - {"error_count": 4, "event": "Error in subscription for wallet DfyUYAcP...: 1", "logger": "wallet_tracker", "level": "error", "timestamp": "2025-06-30T15:20:55.677007Z"}
-2025-06-30 08:20:58,149 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:20:58,154 - cli_ui - INFO - {"event": "Balance updated: 0.118000242 SOL", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:58.154490Z"}
-2025-06-30 08:20:58,156 - cli_ui - INFO - {"event": "UI updated with new balance", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:20:58.156470Z"}
-2025-06-30 08:21:02,991 - wallet_tracker - ERROR - {"error_count": 5, "event": "Error in subscription for wallet DfyUYAcP...: 1", "logger": "wallet_tracker", "level": "error", "timestamp": "2025-06-30T15:21:02.991160Z"}
-2025-06-30 08:21:07,426 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:21:07,432 - cli_ui - INFO - {"event": "Balance updated: 0.118000242 SOL", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:21:07.432135Z"}
-2025-06-30 08:21:07,434 - cli_ui - INFO - {"event": "UI updated with new balance", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:21:07.434025Z"}
-2025-06-30 08:21:11,503 - wallet_tracker - ERROR - {"error_count": 6, "event": "Error in subscription for wallet DfyUYAcP...: 1", "logger": "wallet_tracker", "level": "error", "timestamp": "2025-06-30T15:21:11.503230Z"}
-2025-06-30 08:21:13,674 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:21:13,681 - cli_ui - INFO - {"event": "Balance updated: 0.118000242 SOL", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:21:13.681207Z"}
-2025-06-30 08:21:13,686 - cli_ui - INFO - {"event": "UI updated with new balance", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:21:13.686550Z"}
-2025-06-30 08:21:18,355 - wallet_tracker - ERROR - {"error_count": 7, "event": "Error in subscription for wallet DfyUYAcP...: 1", "logger": "wallet_tracker", "level": "error", "timestamp": "2025-06-30T15:21:18.354972Z"}
-2025-06-30 08:21:19,622 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:21:19,626 - cli_ui - INFO - {"event": "Balance updated: 0.118000242 SOL", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:21:19.626122Z"}
-2025-06-30 08:21:19,628 - cli_ui - INFO - {"event": "UI updated with new balance", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:21:19.628034Z"}
-2025-06-30 08:21:25,220 - wallet_tracker - ERROR - {"error_count": 8, "event": "Error in subscription for wallet DfyUYAcP...: 1", "logger": "wallet_tracker", "level": "error", "timestamp": "2025-06-30T15:21:25.220290Z"}
-2025-06-30 08:21:25,510 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:21:25,517 - cli_ui - INFO - {"event": "Balance updated: 0.118000242 SOL", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:21:25.517445Z"}
-2025-06-30 08:21:25,520 - cli_ui - INFO - {"event": "UI updated with new balance", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T15:21:25.519971Z"}
-2025-06-30 08:21:28,176 - main - INFO - {"event": "Received shutdown signal: 2", "logger": "main", "level": "info", "timestamp": "2025-06-30T15:21:28.176549Z"}
-2025-06-30 08:21:28,186 - main - INFO - {"event": "Stopping Solana pump.fun sniping bot", "logger": "main", "level": "info", "timestamp": "2025-06-30T15:21:28.186373Z"}
-2025-06-30 08:21:28,192 - strategy - INFO - {"event": "Stopping strategy engine", "logger": "strategy", "level": "info", "timestamp": "2025-06-30T15:21:28.192769Z"}
-2025-06-30 08:21:28,211 - event_processor - INFO - {"event": "Stopping event processor", "logger": "event_processor", "level": "info", "timestamp": "2025-06-30T15:21:28.211559Z"}
-2025-06-30 08:21:28,214 - volume_analyzer - INFO - {"event": "Stopping volume analyzer", "logger": "volume_analyzer", "level": "info", "timestamp": "2025-06-30T15:21:28.214521Z"}
-2025-06-30 08:21:28,215 - price_tracker - INFO - {"event": "Stopping price tracker", "logger": "price_tracker", "level": "info", "timestamp": "2025-06-30T15:21:28.215860Z"}
-2025-06-30 08:21:28,217 - wallet_tracker - INFO - {"event": "Stopping wallet tracker", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T15:21:28.217272Z"}
-2025-06-30 08:21:29,780 - pump_monitor - INFO - {"event": "Stopping pump.fun monitor", "logger": "pump_monitor", "level": "info", "timestamp": "2025-06-30T15:21:29.779981Z"}
-2025-06-30 08:21:30,484 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-06-30 08:21:30,510 - connection - INFO - {"event": "All connections closed", "logger": "connection", "level": "info", "timestamp": "2025-06-30T15:21:30.510761Z"}
-2025-06-30 08:21:30,539 - main - INFO - {"event": "Solana pump.fun sniping bot stopped successfully", "logger": "main", "level": "info", "timestamp": "2025-06-30T15:21:30.539772Z"}
+2025-06-30 12:28:11,119 - config - INFO - {"event": "Configuration validated successfully", "logger": "config", "level": "info", "timestamp": "2025-06-30T19:28:11.119043Z"}
+2025-06-30 12:28:12,074 - connection - INFO - {"event": "Connection manager initialized with 1 RPC endpoints", "logger": "connection", "level": "info", "timestamp": "2025-06-30T19:28:12.073708Z"}
+2025-06-30 12:28:12,096 - cli_ui - INFO - {"event": "Starting modern UI live display", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T19:28:12.095987Z"}
+2025-06-30 12:28:12,122 - cli_ui - INFO - {"event": "UI live display started", "logger": "cli_ui", "level": "info", "timestamp": "2025-06-30T19:28:12.122379Z"}
+2025-06-30 12:28:13,027 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:13,303 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:13,306 - connection - INFO - {"event": "Connected to RPC endpoint: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE", "logger": "connection", "level": "info", "timestamp": "2025-06-30T19:28:13.306641Z"}
+2025-06-30 12:28:13,632 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:13,642 - wallet - INFO - {"public_key": "4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2", "event": "Keypair loaded successfully", "logger": "wallet", "level": "info", "timestamp": "2025-06-30T19:28:13.642361Z"}
+2025-06-30 12:28:13,644 - wallet - INFO - {"public_key": "4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2", "event": "Wallet manager initialized", "logger": "wallet", "level": "info", "timestamp": "2025-06-30T19:28:13.644895Z"}
+2025-06-30 12:28:13,913 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:13,917 - wallet - INFO - {"event": "Wallet validation passed. Balance: 0.118000 SOL", "logger": "wallet", "level": "info", "timestamp": "2025-06-30T19:28:13.917491Z"}
+2025-06-30 12:28:13,919 - wallet_tracker - INFO - {"event": "Using WebSocket endpoint: wss://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:28:13.919721Z"}
+2025-06-30 12:28:13,922 - pump_monitor - INFO - {"event": "Starting pump.fun monitor", "logger": "pump_monitor", "level": "info", "timestamp": "2025-06-30T19:28:13.922427Z"}
+2025-06-30 12:28:13,924 - pump_monitor - INFO - {"event": "Starting targeted REST API polling for pump.fun data", "logger": "pump_monitor", "level": "info", "timestamp": "2025-06-30T19:28:13.923998Z"}
+2025-06-30 12:28:13,925 - pump_monitor - INFO - {"event": "Targeted REST API polling started", "logger": "pump_monitor", "level": "info", "timestamp": "2025-06-30T19:28:13.925487Z"}
+2025-06-30 12:28:13,926 - price_tracker - INFO - {"event": "Starting price tracker", "logger": "price_tracker", "level": "info", "timestamp": "2025-06-30T19:28:13.926832Z"}
+2025-06-30 12:28:13,928 - volume_analyzer - INFO - {"event": "Starting volume analyzer", "logger": "volume_analyzer", "level": "info", "timestamp": "2025-06-30T19:28:13.928138Z"}
+2025-06-30 12:28:13,929 - event_processor - INFO - {"event": "Starting event processor", "logger": "event_processor", "level": "info", "timestamp": "2025-06-30T19:28:13.929429Z"}
+2025-06-30 12:28:13,930 - pump_monitor - INFO - {"event": "Registered new token callback. Total callbacks: 1", "logger": "pump_monitor", "level": "info", "timestamp": "2025-06-30T19:28:13.930571Z"}
+2025-06-30 12:28:13,931 - event_processor - INFO - {"event": "Registered new token callback with pump monitor", "logger": "event_processor", "level": "info", "timestamp": "2025-06-30T19:28:13.931707Z"}
+2025-06-30 12:28:13,932 - price_tracker - INFO - {"event": "Registered price update callback. Total callbacks: 1", "logger": "price_tracker", "level": "info", "timestamp": "2025-06-30T19:28:13.932851Z"}
+2025-06-30 12:28:13,934 - event_processor - INFO - {"event": "Registered price update callback with price tracker", "logger": "event_processor", "level": "info", "timestamp": "2025-06-30T19:28:13.934335Z"}
+2025-06-30 12:28:13,935 - volume_analyzer - INFO - {"event": "Registered volume spike callback. Total callbacks: 1", "logger": "volume_analyzer", "level": "info", "timestamp": "2025-06-30T19:28:13.935524Z"}
+2025-06-30 12:28:13,936 - event_processor - INFO - {"event": "Registered volume spike callback with volume analyzer", "logger": "event_processor", "level": "info", "timestamp": "2025-06-30T19:28:13.936620Z"}
+2025-06-30 12:28:13,938 - wallet_tracker - INFO - {"event": "Registered wallet buy callback. Total callbacks: 1", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:28:13.938439Z"}
+2025-06-30 12:28:13,940 - event_processor - INFO - {"event": "Registered wallet buy callback with wallet tracker", "logger": "event_processor", "level": "info", "timestamp": "2025-06-30T19:28:13.940216Z"}
+2025-06-30 12:28:13,941 - wallet_tracker - INFO - {"event": "Starting enhanced wallet tracker for 1 wallets", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:28:13.941539Z"}
+2025-06-30 12:28:13,942 - strategy - INFO - {"event": "Starting strategy engine", "logger": "strategy", "level": "info", "timestamp": "2025-06-30T19:28:13.942845Z"}
+2025-06-30 12:28:13,944 - main - INFO - {"event": "Solana pump.fun sniping bot started successfully", "logger": "main", "level": "info", "timestamp": "2025-06-30T19:28:13.944039Z"}
+2025-06-30 12:28:13,945 - wallet_tracker - INFO - {"event": "Connecting to WebSocket for wallet DfyUYAcP...", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:28:13.945278Z"}
+2025-06-30 12:28:14,461 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:14,749 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:15,049 - wallet_tracker - INFO - {"event": "WebSocket connection established for wallet tracking", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:28:15.049524Z"}
+2025-06-30 12:28:15,374 - wallet_tracker - INFO - {"event": "Subscribed to account DfyUYAcP... with ID: 5427587014819577856", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:28:15.374203Z"}
+2025-06-30 12:28:15,376 - wallet_tracker - INFO - {"event": "\ud83d\udccc Note: Global logs subscription disabled to prevent spam", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:28:15.376319Z"}
+2025-06-30 12:28:15,377 - wallet_tracker - INFO - {"event": "\ud83d\udccc Monitoring account changes and fetching transactions on demand", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:28:15.377899Z"}
+2025-06-30 12:28:18,089 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:18,412 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:21,730 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:22,063 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:22,406 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:25,876 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:26,172 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:29,511 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:29,863 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:30,197 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:33,597 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:33,898 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:37,179 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:37,449 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:37,703 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:41,056 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:41,322 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:44,614 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:44,976 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:45,332 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:48,640 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:48,995 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:52,298 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:52,657 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:52,984 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:56,319 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:56,595 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:28:59,862 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:00,185 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:00,538 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:03,883 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:04,295 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:07,673 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:08,006 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:08,258 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:11,592 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:11,922 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:15,263 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:15,627 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:16,027 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:19,331 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:19,692 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:23,040 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:23,367 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:23,692 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:27,111 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:27,439 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:30,728 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:31,019 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:31,375 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:34,670 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:35,036 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:38,383 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:38,678 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:39,238 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:42,581 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:42,938 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:46,704 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:47,137 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:47,436 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:48,570 - main - INFO - {"event": "Received shutdown signal: 2", "logger": "main", "level": "info", "timestamp": "2025-06-30T19:29:48.569791Z"}
+2025-06-30 12:29:48,572 - main - INFO - {"event": "Stopping Solana pump.fun sniping bot", "logger": "main", "level": "info", "timestamp": "2025-06-30T19:29:48.572443Z"}
+2025-06-30 12:29:48,573 - strategy - INFO - {"event": "Stopping strategy engine", "logger": "strategy", "level": "info", "timestamp": "2025-06-30T19:29:48.573904Z"}
+2025-06-30 12:29:48,575 - event_processor - INFO - {"event": "Stopping event processor", "logger": "event_processor", "level": "info", "timestamp": "2025-06-30T19:29:48.575099Z"}
+2025-06-30 12:29:48,576 - volume_analyzer - INFO - {"event": "Stopping volume analyzer", "logger": "volume_analyzer", "level": "info", "timestamp": "2025-06-30T19:29:48.576381Z"}
+2025-06-30 12:29:48,577 - price_tracker - INFO - {"event": "Stopping price tracker", "logger": "price_tracker", "level": "info", "timestamp": "2025-06-30T19:29:48.577847Z"}
+2025-06-30 12:29:48,579 - wallet_tracker - INFO - {"event": "Stopping wallet tracker", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:29:48.579065Z"}
+2025-06-30 12:29:48,924 - wallet_tracker - INFO - {"event": "Monitoring cancelled for wallet DfyUYAcP...", "logger": "wallet_tracker", "level": "info", "timestamp": "2025-06-30T19:29:48.924231Z"}
+2025-06-30 12:29:48,927 - pump_monitor - INFO - {"event": "Stopping pump.fun monitor", "logger": "pump_monitor", "level": "info", "timestamp": "2025-06-30T19:29:48.926992Z"}
+2025-06-30 12:29:49,278 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-06-30 12:29:49,281 - connection - INFO - {"event": "All connections closed", "logger": "connection", "level": "info", "timestamp": "2025-06-30T19:29:49.281160Z"}
+2025-06-30 12:29:49,282 - main - INFO - {"event": "Solana pump.fun sniping bot stopped successfully", "logger": "main", "level": "info", "timestamp": "2025-06-30T19:29:49.282410Z"}

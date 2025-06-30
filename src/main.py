@@ -168,12 +168,17 @@ async def main(ui_mode: bool = False) -> None:
     Args:
         ui_mode: If True, run the bot with CLI UI.
     """
+    # Load configuration FIRST, before anything else
+    config_manager.load_all()
+    
     bot = PumpBot()
+    
     if ui_mode:
         from src.ui.cli import initialize_bot_cli
         cli = initialize_bot_cli()
         # Start UI in a separate task
         asyncio.create_task(cli.start())
+        
     await bot.start()
 
 
