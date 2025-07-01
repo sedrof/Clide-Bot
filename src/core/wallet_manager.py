@@ -1,6 +1,6 @@
 """
 Wallet management for the Solana pump.fun sniping bot.
-Handles keypair loading, balance checking, and transaction signing.
+Fixed to use correct solders API for transaction signing.
 """
 
 import asyncio
@@ -17,7 +17,6 @@ import structlog
 from src.utils.config import config_manager, WalletConfig
 from src.utils.logger import get_logger
 from src.core.connection_manager import connection_manager
-
 
 logger = get_logger("wallet")
 
@@ -119,7 +118,7 @@ class WalletManager:
             if not self.client or not self.public_key:
                 raise ValueError("Wallet not initialized")
             
-            mint_pubkey = PublicKey(token_mint)
+            mint_pubkey = PublicKey.from_string(token_mint)
             
             # Get token accounts for this wallet
             response = await self.client.get_token_accounts_by_owner(
@@ -133,7 +132,7 @@ class WalletManager:
             # Get balance from the first token account
             token_account = response.value[0]
             account_info = await self.client.get_token_account_balance(
-                PublicKey(token_account.pubkey)
+                PublicKey.from_string(str(token_account.pubkey))
             )
             
             if account_info.value:
@@ -148,6 +147,7 @@ class WalletManager:
     async def sign_transaction(self, transaction: Transaction) -> Transaction:
         """
         Sign a transaction with the wallet keypair.
+        FIXED: Now passes recent_blockhash to sign method.
         
         Args:
             transaction: Transaction to sign
@@ -159,7 +159,13 @@ class WalletManager:
             if not self.keypair:
                 raise ValueError("Keypair not loaded")
             
-            transaction.sign(self.keypair)
+            # The solders Transaction.sign() requires both keypair and blockhash
+            # The blockhash is already in the transaction's message
+            recent_blockhash = transaction.message.recent_blockhash
+            
+            # Sign with both keypair and blockhash
+            transaction.sign([self.keypair], recent_blockhash)
+            
             logger.debug("Transaction signed successfully")
             return transaction
             
@@ -271,7 +277,7 @@ class WalletManager:
             Transaction signature if successful, None if failed
         """
         try:
-            # Sign transaction
+            # Sign transaction (already handles blockhash internally)
             signed_tx = await self.sign_transaction(transaction)
             
             # Send transaction

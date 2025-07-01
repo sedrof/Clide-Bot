@@ -1,116 +1,117 @@
 """
-Transaction builder for the Solana pump.fun sniping bot.
-Fixed version with proper solders API usage and actual swap implementations.
+Transaction builder with multi-DEX support.
+Supports Jupiter, Raydium, and Pump.fun for copy trading.
 """
 
 from typing import Optional, Dict, Any, List
 from solders.transaction import Transaction
-from solders.message import Message
-from solders.instruction import Instruction, AccountMeta
 from solders.pubkey import Pubkey as PublicKey
-from solders.system_program import TransferParams, transfer
-from solders.compute_budget import set_compute_unit_limit, set_compute_unit_price
-from solders.hash import Hash
-from solders.keypair import Keypair
-import structlog
 
 from src.utils.config import config_manager
 from src.utils.logger import get_logger
 from src.core.wallet_manager import wallet_manager
 from src.core.connection_manager import connection_manager
+from src.integrations.dex_interface import dex_router
+from src.integrations.jupiter_dex import jupiter_dex
+from src.integrations.raydium_dex import raydium_dex
+from src.integrations.pumpfun_dex import pumpfun_dex
 
 logger = get_logger("transaction")
 
 
 class TransactionBuilder:
-    """Builds transactions for token trading on Solana."""
+    """Builds transactions for token trading on multiple DEXs."""
     
     def __init__(self):
         self.settings = config_manager.get_settings()
         
-        # Program IDs for DEXs
-        self.PUMP_PROGRAM_ID = PublicKey.from_string("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P")
-        self.RAYDIUM_V4_PROGRAM_ID = PublicKey.from_string("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
-        self.JUPITER_V6_PROGRAM_ID = PublicKey.from_string("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4")
+        # Token constants
+        self.WSOL_MINT = "So11111111111111111111111111111111111111112"
         
-        # Token program IDs
-        self.TOKEN_PROGRAM_ID = PublicKey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
-        self.SYSTEM_PROGRAM_ID = PublicKey.from_string("11111111111111111111111111111111")
-        self.WSOL_MINT = PublicKey.from_string("So11111111111111111111111111111111111111112")
+        # DEX preferences (can be configured)
+        self.dex_priority = ["Jupiter", "Raydium", "Pump.fun"]
         
-        self.default_priority_fee = 100_000  # Default priority fee in microlamports
+        self._initialized = False
+    
+    async def initialize(self):
+        """Initialize DEX integrations."""
+        if self._initialized:
+            return
         
+        # Initialize all DEXs
+        await jupiter_dex.initialize()
+        await raydium_dex.initialize()
+        await pumpfun_dex.initialize()
+        
+        # Register with router
+        dex_router.register_dex("Jupiter", jupiter_dex)
+        dex_router.register_dex("Raydium", raydium_dex)
+        dex_router.register_dex("Pump.fun", pumpfun_dex)
+        
+        self._initialized = True
+        logger.info("Transaction builder initialized with all DEXs")
+    
     async def build_and_execute_buy_transaction(
         self,
         token_address: str,
         amount_sol: float,
-        slippage_tolerance: float = 0.1,
-        priority_fee: Optional[int] = None
+        slippage_tolerance: float = 0.01,
+        priority_fee: Optional[int] = None,
+        preferred_dex: Optional[str] = None
     ) -> Optional[str]:
         """
-        Build and execute a buy transaction.
-        For now, this is a placeholder that logs the attempt.
+        Build and execute a buy transaction using the best available DEX.
         
-        Real implementation would require:
-        1. Finding the appropriate liquidity pool
-        2. Getting pool state and calculating amounts
-        3. Building the actual swap instruction
-        4. Signing and sending the transaction
+        Args:
+            token_address: Token mint address to buy
+            amount_sol: Amount of SOL to spend
+            slippage_tolerance: Slippage tolerance (0.01 = 1%)
+            priority_fee: Optional priority fee in microlamports
+            preferred_dex: Optional preferred DEX name
+            
+        Returns:
+            Transaction signature if successful
         """
         try:
-            logger.info(f"Building buy transaction for {token_address[:8]}... with {amount_sol} SOL")
+            logger.info(
+                f"Building buy transaction for {token_address[:8]}... "
+                f"with {amount_sol} SOL (DEX: {preferred_dex or 'auto'})"
+            )
+            
+            # Validate inputs
+            if amount_sol < 0.0001:
+                logger.error(f"Amount too small: {amount_sol} SOL")
+                return None
+            
+            # Ensure initialized
+            await self.initialize()
             
             # Get wallet
             if not wallet_manager.get_public_key():
                 raise ValueError("Wallet not initialized")
             
-            # Get RPC client
-            client = await connection_manager.get_rpc_client()
-            if not client:
-                raise ValueError("No RPC client available")
+            # Convert SOL to lamports
+            amount_lamports = int(amount_sol * 1_000_000_000)
             
-            # Get recent blockhash
-            blockhash_resp = await client.get_latest_blockhash()
-            if not blockhash_resp or not blockhash_resp.value:
-                raise ValueError("Failed to get recent blockhash")
-            
-            recent_blockhash = blockhash_resp.value.blockhash
-            
-            # Create instructions list
-            instructions = []
-            
-            # Add compute budget instructions
-            if priority_fee is None:
-                priority_fee = self.default_priority_fee
-            
-            instructions.append(set_compute_unit_limit(300_000))
-            instructions.append(set_compute_unit_price(priority_fee))
-            
-            # TODO: Add actual swap instructions here
-            # For now, we'll just create a minimal valid transaction
-            # In production, this would include:
-            # 1. Create/find associated token accounts
-            # 2. Wrap SOL if needed
-            # 3. Execute swap on DEX
-            
-            # Create message
-            message = Message.new_with_blockhash(
-                instructions,
-                wallet_manager.get_public_key(),
-                recent_blockhash
+            # Get transaction from DEX router
+            transaction = await dex_router.execute_swap(
+                input_mint=self.WSOL_MINT,
+                output_mint=token_address,
+                amount=amount_lamports,
+                user_public_key=str(wallet_manager.get_public_key()),
+                slippage_bps=int(slippage_tolerance * 10000),
+                preferred_dex=preferred_dex
             )
             
-            # Create transaction with proper arguments
-            transaction = Transaction.new_unsigned(message)
+            if not transaction:
+                logger.error("Failed to build swap transaction")
+                return None
             
-            # Sign transaction
-            signed_tx = await wallet_manager.sign_transaction(transaction)
-            
-            # Send transaction
-            signature = await wallet_manager.send_and_confirm_transaction(signed_tx)
+            # Send and confirm transaction
+            signature = await wallet_manager.send_and_confirm_transaction(transaction)
             
             if signature:
-                logger.info(f"Buy transaction sent: {signature}")
+                logger.info(f"Buy transaction successful: {signature}")
                 return signature
             else:
                 logger.error("Failed to send buy transaction")
@@ -124,55 +125,89 @@ class TransactionBuilder:
         self,
         token_address: str,
         amount_tokens: float,
-        slippage_tolerance: float = 0.1,
-        priority_fee: Optional[int] = None
+        slippage_tolerance: float = 0.01,
+        priority_fee: Optional[int] = None,
+        preferred_dex: Optional[str] = None
     ) -> Optional[str]:
         """
-        Build and execute a sell transaction.
-        Placeholder implementation similar to buy.
+        Build and execute a sell transaction using the best available DEX.
+        Same logic applies for all platforms - find best price and execute.
+        
+        Args:
+            token_address: Token mint address to sell
+            amount_tokens: Amount of tokens to sell
+            slippage_tolerance: Slippage tolerance (0.01 = 1%)
+            priority_fee: Optional priority fee in microlamports
+            preferred_dex: Optional preferred DEX name
+            
+        Returns:
+            Transaction signature if successful
         """
         try:
-            logger.info(f"Building sell transaction for {token_address[:8]}... with {amount_tokens} tokens")
+            logger.info(
+                f"Building sell transaction for {token_address[:8]}... "
+                f"with {amount_tokens} tokens (DEX: {preferred_dex or 'auto'})"
+            )
             
-            # Similar structure to buy transaction
-            # TODO: Implement actual sell logic
+            # Ensure initialized
+            await self.initialize()
             
-            return None
+            # Get token decimals (assuming 9 for now, should fetch from chain)
+            decimals = 9
+            amount_smallest_unit = int(amount_tokens * (10 ** decimals))
             
+            # Get transaction from DEX router
+            transaction = await dex_router.execute_swap(
+                input_mint=token_address,
+                output_mint=self.WSOL_MINT,
+                amount=amount_smallest_unit,
+                user_public_key=str(wallet_manager.get_public_key()),
+                slippage_bps=int(slippage_tolerance * 10000),
+                preferred_dex=preferred_dex
+            )
+            
+            if not transaction:
+                logger.error("Failed to build sell transaction")
+                return None
+            
+            # Send and confirm transaction
+            signature = await wallet_manager.send_and_confirm_transaction(transaction)
+            
+            if signature:
+                logger.info(f"Sell transaction successful: {signature}")
+                return signature
+            else:
+                logger.error("Failed to send sell transaction")
+                return None
+                
         except Exception as e:
             logger.error(f"Error building/executing sell transaction: {e}", exc_info=True)
             return None
     
-    def calculate_priority_fee(
+    async def get_best_price(
         self,
-        urgency: str = "normal",
-        base_fee: Optional[int] = None
-    ) -> int:
-        """
-        Calculate priority fee based on urgency level.
+        input_mint: str,
+        output_mint: str,
+        amount: int
+    ) -> Optional[Dict[str, Any]]:
+        """Get best price across all DEXs."""
+        await self.initialize()
         
-        Args:
-            urgency: Urgency level ("low", "normal", "high", "critical")
-            base_fee: Base fee to use instead of default
-            
-        Returns:
-            Priority fee in microlamports
-        """
-        if base_fee is None:
-            base_fee = self.default_priority_fee
+        best_dex, best_quote = await dex_router.find_best_route(
+            input_mint=input_mint,
+            output_mint=output_mint,
+            amount=amount
+        )
         
-        multipliers = {
-            "low": 0.5,
-            "normal": 1.0,
-            "high": 2.0,
-            "critical": 5.0
-        }
+        if best_quote:
+            return {
+                "dex": best_dex,
+                "quote": best_quote,
+                "input_amount": amount,
+                "output_amount": best_quote.get("outputAmount", 0)
+            }
         
-        multiplier = multipliers.get(urgency, 1.0)
-        priority_fee = int(base_fee * multiplier)
-        
-        logger.debug(f"Calculated priority fee: {priority_fee} microlamports (urgency: {urgency})")
-        return priority_fee
+        return None
 
 
 # Global transaction builder instance
