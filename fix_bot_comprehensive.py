@@ -1,4 +1,28 @@
-"""
+#!/usr/bin/env python3
+
+import os
+import sys
+import shutil
+from pathlib import Path
+
+def backup_file(filepath):
+    """Create a backup of the file before modifying."""
+    backup_path = f"{filepath}.backup_{os.getpid()}"
+    if os.path.exists(filepath):
+        shutil.copy2(filepath, backup_path)
+        print(f"✓ Backed up: {filepath}")
+    return backup_path
+
+def write_file(filepath, content):
+    """Write content to file."""
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(content)
+    print(f"✓ Updated: {filepath}")
+
+def fix_wallet_tracker_complete():
+    """Fix wallet tracker with complete swap parsing logic."""
+    content = '''"""
 Enhanced wallet tracking with complete Jupiter/Raydium/Pump.fun parsing.
 Fixed to properly detect swaps and trigger UI updates.
 """
@@ -286,7 +310,7 @@ class EnhancedWalletTracker:
                         if start_idx >= 0:
                             json_str = log[start_idx:]
                             # Clean up the JSON string
-                            json_str = json_str.replace('\"', '"')
+                            json_str = json_str.replace('\\"', '"')
                             event_data = json.loads(json_str)
                             
                             input_mint = event_data.get("inputMint")
@@ -528,3 +552,81 @@ def initialize_wallet_tracker():
     global wallet_tracker
     wallet_tracker = EnhancedWalletTracker()
     return wallet_tracker
+'''
+    write_file('src/monitoring/wallet_tracker.py', content)
+
+def main():
+    """Apply the comprehensive swap parsing fix."""
+    print("="*60)
+    print("🔧 Fix Swap Parsing - Jupiter/Raydium/Pump.fun")
+    print("="*60)
+    print()
+    
+    # Check we're in the right directory
+    if not os.path.exists('src/main.py'):
+        print("❌ ERROR: This script must be run from the project root directory")
+        print("   Please cd to C:\\Users\\JJ\\Desktop\\Clide-Bot and run again")
+        return 1
+    
+    print("📁 Working directory:", os.getcwd())
+    print()
+    
+    try:
+        print("Applying swap parsing fixes...")
+        print()
+        
+        # Apply the fix
+        fix_wallet_tracker_complete()
+        
+        print()
+        print("="*60)
+        print("✅ Swap parsing fix applied successfully!")
+        print("="*60)
+        print()
+        print("📋 What was fixed:")
+        print()
+        print("1. ✅ Jupiter V6 Parsing:")
+        print("   - Now properly extracts swap events from logs")
+        print("   - Parses inner instructions for token transfers")
+        print("   - Correctly identifies output token and SOL amount")
+        print()
+        print("2. ✅ Raydium Parsing:")
+        print("   - Handles both V4 and Launchpad variants")
+        print("   - Extracts token from correct account positions")
+        print("   - Parses amount from logs and inner instructions")
+        print()
+        print("3. ✅ Pump.fun Parsing:")
+        print("   - Detects create, buy, and sell operations")
+        print("   - Extracts token address from accounts")
+        print("   - Uses appropriate default amounts")
+        print()
+        print("4. ✅ UI Updates:")
+        print("   - Buy callbacks will now be triggered")
+        print("   - UI will show tracked wallet activity")
+        print("   - Copy trades will be attempted")
+        print()
+        print("🚀 To run the bot:")
+        print("   python -m src.main")
+        print()
+        print("📊 Expected behavior:")
+        print("   - Jupiter swaps will be detected as buys")
+        print("   - Raydium swaps will be parsed correctly")
+        print("   - UI will update with wallet activity")
+        print("   - Copy trades will be triggered (placeholder execution)")
+        print()
+        print("💡 The bot will now:")
+        print("   - Show '🟢 BUY DETECTED' for each swap")
+        print("   - Update stats to show 'Buys: X'")
+        print("   - Trigger UI updates in the activity feed")
+        print("   - Attempt copy trades (needs real implementation)")
+        
+        return 0
+        
+    except Exception as e:
+        print(f"❌ Error applying fix: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())

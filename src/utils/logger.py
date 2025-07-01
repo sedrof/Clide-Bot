@@ -1,6 +1,5 @@
 """
-Simplified logging configuration for the Solana pump.fun sniping bot.
-Fixed for Python 3.13 compatibility.
+Simplified logging configuration with reduced console verbosity.
 """
 
 import sys
@@ -43,6 +42,7 @@ def setup_logging(
 ) -> None:
     """
     Setup simple logging with file rotation and console output.
+    Console will only show WARNING and above to reduce clutter.
     """
     
     # Create logs directory if it doesn't exist
@@ -56,7 +56,7 @@ def setup_logging(
     # Clear existing handlers
     root_logger.handlers.clear()
     
-    # File handler with rotation
+    # File handler with rotation - gets ALL levels
     file_handler = RotatingFileHandler(
         filename=str(log_file),
         maxBytes=max_file_size_mb * 1024 * 1024,
@@ -73,10 +73,10 @@ def setup_logging(
     file_handler.setFormatter(file_formatter)
     root_logger.addHandler(file_handler)
     
-    # Console handler
+    # Console handler - only WARNING and above
     if console_output:
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(getattr(logging, level.upper()))
+        console_handler.setLevel(logging.WARNING)  # Only warnings and errors to console
         
         # Console formatter with colors
         console_formatter = SimpleConsoleFormatter(
@@ -86,9 +86,8 @@ def setup_logging(
         console_handler.setFormatter(console_formatter)
         root_logger.addHandler(console_handler)
     
-    # Log initialization
-    root_logger.info(f"Logging initialized - Level: {level}, File: {file_path}")
-    print(f"✓ Logging initialized - Level: {level}, File: {file_path}")
+    # Log initialization to file only
+    logging.getLogger(__name__).info(f"Logging initialized - Level: {level}, File: {file_path}")
 
 
 class BotLogger:
