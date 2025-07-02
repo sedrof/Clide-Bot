@@ -11,7 +11,7 @@ import time
 
 from src.utils.config import config_manager
 from src.utils.logger import get_logger
-from src.core.transaction_builder import transaction_builder
+from src.core.transaction_builder_wrapper import transaction_builder
 from src.monitoring.position_tracker import position_tracker
 from src.monitoring.wallet_tracker import wallet_tracker
 from src.core.wallet_manager import wallet_manager
@@ -264,10 +264,10 @@ class StrategyEngine:
             logger.info(f"Using slippage: {slippage*100:.1f}%")
             
             # Execute the transaction
-            tx_signature = await transaction_builder.execute_buy(
+            tx_signature = await transaction_builder.build_and_execute_buy_transaction(
                 token_address=token_address,
                 amount_sol=amount_sol,
-                slippage=slippage,
+                slippage_tolerance=slippage,
                 preferred_dex=preferred_dex
             )
             
@@ -351,10 +351,10 @@ class StrategyEngine:
             )["slippage"]
             
             # Execute the transaction
-            tx_signature = await transaction_builder.execute_sell(
+            tx_signature = await transaction_builder.build_and_execute_sell_transaction(
                 token_address=token_address,
                 amount_tokens=amount_tokens,
-                slippage=slippage
+                slippage_tolerance=slippage
             )
             
             execution_time = time.time() - start_time
