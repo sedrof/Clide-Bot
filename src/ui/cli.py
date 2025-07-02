@@ -49,7 +49,7 @@ class BotCLI:
         self.running = False
         
         # Data storage
-        self.tracked_wallet_activity = deque(maxlen=10)
+        self.tracked_wallet_activity = deque(maxlen=10)  # Reduced for cleaner display
         self.bot_actions = deque(maxlen=10)
         self.trades: List[Trade] = []
         self.token_holdings: Dict[str, Dict[str, float]] = {}
@@ -80,11 +80,11 @@ class BotCLI:
     
     def _setup_layout(self):
         """Setup the enhanced layout for the CLI UI."""
-        # Main layout structure
+        # Main layout structure with better proportions
         self.layout.split(
-            Layout(name="header", size=4),
+            Layout(name="header", size=4),     # Increased header size
             Layout(name="body", ratio=1),
-            Layout(name="footer", size=4)
+            Layout(name="footer", size=4)      # Increased footer size
         )
         
         # Header
@@ -110,8 +110,8 @@ class BotCLI:
             Layout(name="holdings", ratio=1)
         )
         
-        # FIXED: Bottom row should contain trades directly, not a nested layout
-        # No need for body["bottom_row"]["trades"], just body["bottom_row"]
+        # Bottom row - Trades table
+        body["bottom_row"].update(Layout(name="trades"))
         
         # Initialize all panels
         self._initialize_panels()
@@ -120,35 +120,38 @@ class BotCLI:
         """Update header with title and status."""
         status_color = "green" if self.running else "red"
         
-        # Create text with justify set on the Text object
-        header_text = Text(justify="center")
-        header_text.append("🚀 ", style="bold")
-        header_text.append("SOLANA PUMP.FUN SNIPER BOT", style="bold cyan")
-        header_text.append(" 🚀\n", style="bold")
-        header_text.append(f"Status: {'RUNNING' if self.running else 'STOPPED'}", style=f"bold {status_color}")
-        header_text.append(" | ", style="dim")
-        header_text.append(f"Balance: {self.wallet_balance:.6f} SOL", style="bold yellow")
+        # Create title and status texts
+        title_text = Text()
+        title_text.append("🚀 ", style="bold")
+        title_text.append("SOLANA PUMP.FUN SNIPER BOT", style="bold cyan")
         
+        status_text = Text()
+        status_text.append("Status: ", style="dim")
+        status_text.append(f"{'RUNNING' if self.running else 'STOPPED'}", style=f"bold {status_color}")
+        status_text.append(" | ", style="dim")
+        status_text.append(f"Balance: {self.wallet_balance:.4f} SOL", style="yellow")
+        
+        # Create combined content panel
+        combined_text = Text()
+        combined_text.append(title_text)
+        combined_text.append("\n")
+        combined_text.append(status_text)
+        
+        # Update header with centered content
         self.layout["header"].update(
             Panel(
-                Align.center(header_text),
+                Align.center(combined_text),
                 border_style="cyan",
                 box=box.DOUBLE
             )
         )
     
     def _update_footer(self):
-        """Update footer with connection status and controls."""
-        footer_text = Text(justify="center")
-        footer_text.append("RPC: ", style="dim")
-        footer_text.append(self.stats['connection_status'], style="bold")
-        footer_text.append(" | ", style="dim")
-        footer_text.append("Monitor: ", style="dim")
-        footer_text.append(self.stats['websocket_status'], style="bold")
-        footer_text.append("\n")
-        footer_text.append("Press ", style="dim")
-        footer_text.append("Ctrl+C", style="bold yellow")
-        footer_text.append(" to stop", style="dim")
+        """Update footer with connection status."""
+        footer_text = Text()
+        footer_text.append(f"RPC: {self.stats['connection_status']} | ", style="dim")
+        footer_text.append(f"WS: {self.stats['websocket_status']} | ", style="dim")
+        footer_text.append("Press Ctrl+C to stop", style="dim yellow")
         
         self.layout["footer"].update(
             Panel(
@@ -160,416 +163,280 @@ class BotCLI:
     
     def _initialize_panels(self):
         """Initialize all UI panels with default content."""
-        body = self.layout["body"]
-        
         # Stats panel
-        body["top_row"]["stats"].update(self._render_stats())
+        self._update_stats_panel()
         
         # Tracking panel
-        body["top_row"]["tracking"].update(self._render_tracking())
+        self._update_tracking_panel()
         
         # Activity panel
-        body["middle_row"]["activity"].update(self._render_activity())
+        self._update_activity_panel()
         
         # Holdings panel
-        body["middle_row"]["holdings"].update(self._render_holdings())
+        self._update_holdings_panel()
         
-        # FIXED: Trades panel - update bottom_row directly
-        body["bottom_row"].update(self._render_trades())
+        # Trades panel
+        self._update_trades_panel()
         
         # Footer
         self._update_footer()
     
-    def _render_stats(self) -> Panel:
-        """Render statistics panel."""
-        stats_table = Table(show_header=False, box=None, padding=(0, 2))
-        stats_table.add_column("Stat", style="bright_cyan", width=20)
-        stats_table.add_column("Value", style="white", justify="right")
-        
-        total_pnl = self.stats["realized_pnl"] + self.stats["unrealized_pnl"]
-        pnl_color = "bright_green" if total_pnl >= 0 else "bright_red"
-        
-        stats_data = [
-            ("💰 Wallet Balance", f"{self.wallet_balance:.6f} SOL"),
-            ("📊 Total PnL", Text(f"{total_pnl:+.6f} SOL", style=pnl_color)),
-            ("📈 Win Rate", f"{self.stats['win_rate']:.1f}%"),
-            ("", ""),
-            ("🎯 Total Trades", str(self.stats["total_trades"])),
-            ("✅ Successful", str(self.stats["successful_trades"])),
-            ("❌ Failed", str(self.stats["failed_trades"])),
-            ("", ""),
-            ("💎 Best Trade", f"{self.stats['best_trade']:.6f} SOL"),
-            ("💸 Worst Trade", f"{self.stats['worst_trade']:.6f} SOL"),
-            ("📡 Buy Signals", str(self.stats["buy_signals"])),
-        ]
-        
-        for label, value in stats_data:
-            if label:
-                if isinstance(value, Text):
-                    stats_table.add_row(label, value)
-                else:
-                    stats_table.add_row(label, value)
-            else:
-                stats_table.add_row("", "")
-        
-        return Panel(
-            stats_table,
-            title="📊 Bot Statistics",
-            title_align="left",
-            border_style="bright_blue",
-            box=box.ROUNDED
-        )
-    
-    def _render_tracking(self) -> Panel:
-        """Render wallet tracking information."""
-        tracking_table = Table(show_header=False, box=None, padding=(0, 2))
-        tracking_table.add_column("Label", style="bright_cyan", width=20)
-        tracking_table.add_column("Value", style="white", justify="right")
-        
-        tracker_stats = {}
-        try:
-            from src.monitoring.wallet_tracker import wallet_tracker
-            if wallet_tracker:
-                tracker_stats = wallet_tracker.get_stats()
-        except:
-            pass
-        
-        # Get polling interval from wallet tracker
-        polling_interval = "0.5s"  # Default
-        try:
-            from src.monitoring.wallet_tracker import wallet_tracker
-            if wallet_tracker and hasattr(wallet_tracker, 'POLL_INTERVAL'):
-                polling_interval = f"{wallet_tracker.POLL_INTERVAL}s"
-        except:
-            pass
-        
-        tracking_data = [
-            ("⚡ Poll Interval", polling_interval),
-            ("🔍 Transactions", f"{tracker_stats.get('transactions_detected', 0)}"),
-            ("🟢 Buys Detected", f"{tracker_stats.get('buys_detected', 0)}"),
-            ("🔴 Sells Detected", f"{tracker_stats.get('sells_detected', 0)}"),
-            ("⚠️ Errors", f"{tracker_stats.get('errors', 0)}"),
-            ("", ""),
-            ("📍 Active Wallets", ""),
-        ]
-        
-        for label, value in tracking_data:
-            if label:
-                tracking_table.add_row(label, value)
-            else:
-                tracking_table.add_row("", "")
-        
-        settings = config_manager.get_settings()
-        for i, wallet in enumerate(settings.tracking.wallets[:3]):
-            wallet_display = f"{wallet[:6]}...{wallet[-4:]}"
-            tracking_table.add_row(f"  #{i+1}", wallet_display)
-        
-        return Panel(
-            tracking_table,
-            title="🎯 Wallet Tracking",
-            title_align="left",
-            border_style="bright_blue",
-            box=box.ROUNDED
-        )
-    
-    def _render_activity(self) -> Panel:
-        """Render activity feed."""
-        activity_table = Table(
-            show_header=True,
-            header_style="bold bright_yellow",
+    def _update_stats_panel(self):
+        """Update statistics panel."""
+        stats_table = Table(
+            title="📊 Statistics",
             box=box.SIMPLE,
-            padding=(0, 1),
+            show_header=False,
             expand=True
         )
-        activity_table.add_column("Time", style="dim", width=10)
-        activity_table.add_column("Event", style="white", width=20)
-        activity_table.add_column("Details", style="bright_cyan")
         
-        all_activity = []
+        stats_table.add_column("Metric", style="dim")
+        stats_table.add_column("Value", justify="right")
         
-        for activity in self.tracked_wallet_activity:
-            all_activity.append(("wallet", activity))
+        # Calculate win rate
+        if self.stats["total_trades"] > 0:
+            win_rate = (self.stats["successful_trades"] / self.stats["total_trades"]) * 100
+        else:
+            win_rate = 0.0
         
-        for action in self.bot_actions:
-            all_activity.append(("bot", action))
+        # Add stats rows
+        stats_table.add_row("Total Trades", f"{self.stats['total_trades']}")
+        stats_table.add_row("Win Rate", f"{win_rate:.1f}%")
+        stats_table.add_row("Total Volume", f"{self.stats['total_volume']:.4f} SOL")
+        stats_table.add_row("Realized PnL", f"{self.stats['realized_pnl']:+.4f} SOL")
+        stats_table.add_row("Best Trade", f"{self.stats['best_trade']:+.2f}%")
+        stats_table.add_row("Worst Trade", f"{self.stats['worst_trade']:+.2f}%")
         
-        all_activity.sort(key=lambda x: x[1].get("timestamp", 0), reverse=True)
-        
-        for activity_type, activity in all_activity[:8]:
-            time_str = datetime.fromtimestamp(activity.get("timestamp", 0)).strftime("%H:%M:%S")
-            
-            if activity_type == "wallet":
-                event = f"👁️ {activity.get('action', 'Unknown')}"
-                wallet_addr = activity.get('wallet', '')[:8] + "..."
-                token_addr = activity.get('token', '')[:8] + "..."
-                amount = activity.get('amount', 0)
-                details = f"{wallet_addr} → {token_addr} ({amount:.4f} SOL)"
-            else:
-                event = f"🤖 {activity.get('action', 'Unknown')}"
-                details = activity.get('details', '')
-            
-            activity_table.add_row(time_str, event, details)
-        
-        if not all_activity:
-            activity_table.add_row("--:--:--", "Waiting for activity...", "")
-        
-        return Panel(
-            activity_table,
-            title="🔔 Live Activity Feed",
-            title_align="left",
-            border_style="bright_yellow",
-            box=box.ROUNDED
+        self.layout["body"]["top_row"]["stats"].update(
+            Panel(stats_table, border_style="green", box=box.ROUNDED)
         )
     
-    def _render_holdings(self) -> Panel:
-        """Render current holdings."""
-        holdings_table = Table(
-            show_header=True,
-            header_style="bold bright_green",
+    def _update_tracking_panel(self):
+        """Update wallet tracking panel."""
+        tracking_table = Table(
+            title="👁️ Wallet Tracking",
             box=box.SIMPLE,
-            padding=(0, 1)
+            show_header=True,
+            expand=True
         )
-        holdings_table.add_column("Token", width=15)
-        holdings_table.add_column("Amount", width=12, justify="right")
-        holdings_table.add_column("PnL%", width=10, justify="right")
         
-        active_holdings = [(t, h) for t, h in self.token_holdings.items() if h["amount"] > 0]
+        tracking_table.add_column("Time", style="dim", width=8)
+        tracking_table.add_column("Action", width=6)
+        tracking_table.add_column("Details", overflow="fold")
         
-        for token, holding in active_holdings[:5]:
-            current_price = holding.get("current_price", holding["avg_price"])
-            pnl_percent = ((current_price - holding["avg_price"]) / holding["avg_price"] * 100) if holding["avg_price"] > 0 else 0
-            pnl_color = "bright_green" if pnl_percent >= 0 else "bright_red"
+        # Add recent wallet activities
+        for activity in list(self.tracked_wallet_activity)[-5:]:  # Show last 5
+            tracking_table.add_row(
+                activity.get("time", ""),
+                activity.get("action", ""),
+                activity.get("details", "")
+            )
+        
+        self.layout["body"]["top_row"]["tracking"].update(
+            Panel(tracking_table, border_style="blue", box=box.ROUNDED)
+        )
+    
+    def _update_activity_panel(self):
+        """Update bot activity panel."""
+        activity_table = Table(
+            title="📋 Bot Activity",
+            box=box.SIMPLE,
+            show_header=True,
+            expand=True
+        )
+        
+        activity_table.add_column("Time", style="dim", width=12)
+        activity_table.add_column("Event", width=12)
+        activity_table.add_column("Details")
+        
+        # Add recent bot actions
+        for action in list(self.bot_actions)[-8:]:  # Show last 8
+            activity_table.add_row(
+                action.get("time", ""),
+                action.get("event", ""),
+                action.get("details", "")
+            )
+        
+        self.layout["body"]["middle_row"]["activity"].update(
+            Panel(activity_table, border_style="yellow", box=box.ROUNDED)
+        )
+    
+    def _update_holdings_panel(self):
+        """Update token holdings panel."""
+        holdings_table = Table(
+            title="💼 Holdings",
+            box=box.SIMPLE,
+            show_header=True,
+            expand=True
+        )
+        
+        holdings_table.add_column("Token", overflow="fold")
+        holdings_table.add_column("Amount", justify="right")
+        holdings_table.add_column("PnL", justify="right")
+        
+        # Add token holdings
+        for token_address, holding in self.token_holdings.items():
+            pnl = holding.get("pnl", 0.0)
+            pnl_color = "green" if pnl >= 0 else "red"
             
             holdings_table.add_row(
-                f"{token[:8]}...",
-                f"{holding['amount']:.4f}",
-                Text(f"{pnl_percent:+.1f}%", style=pnl_color)
+                f"{holding.get('symbol', token_address[:8])}",
+                f"{holding.get('amount', 0):.2f}",
+                f"[{pnl_color}]{pnl:+.2f}%[/{pnl_color}]"
             )
         
-        if not active_holdings:
-            holdings_table.add_row("No active positions", "-", "-")
-        
-        return Panel(
-            holdings_table,
-            title="💼 Current Holdings",
-            title_align="left",
-            border_style="bright_green",
-            box=box.ROUNDED
+        self.layout["body"]["middle_row"]["holdings"].update(
+            Panel(holdings_table, border_style="magenta", box=box.ROUNDED)
         )
     
-    def _render_trades(self) -> Panel:
-        """Render recent trades."""
+    def _update_trades_panel(self):
+        """Update trades history panel."""
         trades_table = Table(
-            show_header=True,
-            header_style="bold bright_magenta",
+            title="📈 Recent Trades",
             box=box.SIMPLE,
-            padding=(0, 1),
+            show_header=True,
             expand=True
         )
-        trades_table.add_column("Time", style="dim", width=10)
-        trades_table.add_column("Type", width=8)
-        trades_table.add_column("Token", width=15)
-        trades_table.add_column("Amount", width=12, justify="right")
-        trades_table.add_column("Price", width=12, justify="right")
-        trades_table.add_column("PnL", width=12, justify="right")
         
-        for trade in self.trades[-6:]:
-            time_str = datetime.fromtimestamp(trade.timestamp).strftime("%H:%M:%S")
-            type_color = "bright_green" if trade.trade_type == "BUY" else "bright_red"
-            pnl_color = "bright_green" if trade.pnl >= 0 else "bright_red"
+        trades_table.add_column("Time", style="dim", width=12)
+        trades_table.add_column("Type", width=6)
+        trades_table.add_column("Token", overflow="fold")
+        trades_table.add_column("Amount", justify="right")
+        trades_table.add_column("PnL", justify="right")
+        
+        # Add recent trades (last 5)
+        for trade in list(self.trades)[-5:]:
+            trade_time = datetime.fromtimestamp(trade.timestamp).strftime("%H:%M:%S")
+            trade_color = "green" if trade.trade_type == "BUY" else "red"
+            pnl_color = "green" if trade.pnl >= 0 else "red"
             
             trades_table.add_row(
-                time_str,
-                Text(trade.trade_type, style=type_color),
-                f"{trade.token_address[:8]}...",
+                trade_time,
+                f"[{trade_color}]{trade.trade_type}[/{trade_color}]",
+                trade.token_address[:8] + "...",
                 f"{trade.amount:.4f}",
-                f"{trade.price:.8f}",
-                Text(f"{trade.pnl:+.6f}", style=pnl_color) if trade.pnl != 0 else "-"
+                f"[{pnl_color}]{trade.pnl:+.2f}%[/{pnl_color}]"
             )
         
-        if not self.trades:
-            trades_table.add_row("--:--:--", "-", "No trades executed yet", "-", "-", "-")
-        
-        return Panel(
-            trades_table,
-            title="💹 Recent Trades",
-            title_align="left",
-            border_style="bright_magenta",
-            box=box.ROUNDED
+        self.layout["body"]["bottom_row"].update(
+            Panel(trades_table, border_style="cyan", box=box.ROUNDED)
         )
     
-    def _update_ui(self):
-        """Update all UI components."""
-        try:
-            self._update_header()
-            
-            body = self.layout["body"]
-            body["top_row"]["stats"].update(self._render_stats())
-            body["top_row"]["tracking"].update(self._render_tracking())
-            body["middle_row"]["activity"].update(self._render_activity())
-            body["middle_row"]["holdings"].update(self._render_holdings())
-            # FIXED: Update bottom_row directly, not bottom_row["trades"]
-            body["bottom_row"].update(self._render_trades())
-            
-            self._update_footer()
-            
-        except Exception as e:
-            logger.error(f"Error updating UI: {e}")
-    
-    async def _update_balance(self):
-        """Update wallet balance periodically."""
-        await asyncio.sleep(2)
-        
-        first_update = True
-        
-        while self.running:
-            try:
-                balance = await wallet_manager.get_balance()
-                self.wallet_balance = balance
-                
-                if first_update:
-                    self.initial_balance = balance
-                    first_update = False
-                
-                total_pnl = self.stats["realized_pnl"] + self.stats["unrealized_pnl"]
-                self.performance_history.append(total_pnl)
-                
-                rpc_connected = await self._check_rpc_connection()
-                self.stats["connection_status"] = "🟢 Connected" if rpc_connected else "🔴 Disconnected"
-                
-                try:
-                    from src.monitoring.wallet_tracker import wallet_tracker
-                    if wallet_tracker and hasattr(wallet_tracker, 'is_monitoring_active') and wallet_tracker.is_monitoring_active():
-                        self.stats["websocket_status"] = "🟢 Active"
-                    else:
-                        self.stats["websocket_status"] = "🔴 Inactive"
-                except:
-                    self.stats["websocket_status"] = "⚠️ Unknown"
-                
-                self.stats["last_update"] = time.time()
-                
-                if self.live:
-                    self._update_ui()
-                    
-            except Exception as e:
-                logger.error(f"Error updating balance: {e}")
-                
-            await asyncio.sleep(3)
-    
-    async def _check_rpc_connection(self) -> bool:
-        """Check if RPC connection is active."""
-        try:
-            client = await connection_manager.get_rpc_client()
-            if client:
-                await client.get_slot()
-                return True
-        except:
-            pass
-        return False
-    
     def register_callbacks(self):
-        """Register callbacks for bot events."""
+        """Register callbacks with various components."""
         try:
+            # Import here to avoid circular imports
             from src.monitoring.wallet_tracker import wallet_tracker
             from src.trading.strategy_engine import strategy_engine
             
+            # Register wallet buy callback
             if wallet_tracker:
-                wallet_tracker.register_buy_callback(self._on_wallet_buy)
+                wallet_tracker.register_buy_callback(self.handle_wallet_buy)
                 logger.info("Registered wallet buy callback with UI")
-                
+            
+            # Register trade callback
             if strategy_engine:
-                strategy_engine.register_trade_callback(self._on_bot_trade)
+                strategy_engine.register_trade_callback(self.handle_trade)
                 logger.info("Registered trade callback with UI")
                 
         except Exception as e:
             logger.error(f"Error registering callbacks: {e}")
     
-    def _on_wallet_buy(self, wallet_address: str, token_address: str, amount_sol: float):
-        """Callback for when a tracked wallet buys a token."""
-        activity = {
-            "timestamp": time.time(),
-            "action": "Wallet Buy",
-            "wallet": wallet_address,
-            "token": token_address,
-            "amount": amount_sol
-        }
-        self.tracked_wallet_activity.append(activity)
+    def handle_wallet_buy(self, wallet_address: str, token_address: str, amount_sol: float, platform: str = "Unknown", tx_url: str = "") -> None:
+        """Handle buy signal from tracked wallet."""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        # Add to tracked wallet activity
+        self.tracked_wallet_activity.append({
+            "time": timestamp,
+            "action": "BUY",
+            "details": f"{amount_sol:.4f} SOL on {platform}"
+        })
+        
+        # Update stats
         self.stats["buy_signals"] += 1
         self.stats["transactions_monitored"] += 1
         
-        if self.live:
-            self._update_ui()
+        # Refresh UI
+        self._update_tracking_panel()
+        self._update_stats_panel()
     
-    def _on_bot_trade(self, trade_type: str, token_address: str, amount: float, price: float):
-        """Callback for when the bot executes a trade."""
-        trade = Trade(trade_type, token_address, amount, price, time.time())
+    def handle_trade(self, trade_data: Dict[str, Any]) -> None:
+        """Handle trade execution from strategy engine."""
+        timestamp = time.time()
+        
+        # Create trade object
+        trade = Trade(
+            trade_type=trade_data["type"].upper(),
+            token_address=trade_data["token"],
+            amount=trade_data.get("amount_sol", 0.0),
+            price=0.0,  # Would need price data
+            timestamp=timestamp,
+            pnl=0.0
+        )
+        
+        # Add to trades list
         self.trades.append(trade)
         
-        action = {
-            "timestamp": time.time(),
-            "action": f"Bot {trade_type}",
-            "details": f"{token_address[:8]}... {amount:.4f} @ {price:.8f}"
-        }
-        self.bot_actions.append(action)
+        # Add to bot actions
+        self.bot_actions.append({
+            "time": datetime.now().strftime("%H:%M:%S"),
+            "event": f"{trade_data['type'].upper()}",
+            "details": f"{trade_data['token'][:8]}... for {trade_data.get('amount_sol', 0):.4f} SOL"
+        })
         
+        # Update stats
         self.stats["total_trades"] += 1
-        self.stats["total_volume"] += amount * price
+        if trade_data.get("success", True):
+            self.stats["successful_trades"] += 1
+        self.stats["total_volume"] += trade_data.get("amount_sol", 0.0)
         
-        if trade_type == "BUY":
-            if token_address not in self.token_holdings:
-                self.token_holdings[token_address] = {
-                    "amount": 0,
-                    "avg_price": 0,
-                    "current_price": price
-                }
-            
-            holding = self.token_holdings[token_address]
-            total_amount = holding["amount"] + amount
-            total_cost = (holding["amount"] * holding["avg_price"]) + (amount * price)
-            holding["amount"] = total_amount
-            holding["avg_price"] = total_cost / total_amount if total_amount > 0 else 0
-            
-        elif trade_type == "SELL":
-            if token_address in self.token_holdings:
-                holding = self.token_holdings[token_address]
-                profit = (price - holding["avg_price"]) * amount
-                trade.pnl = profit
+        # Refresh UI
+        self._update_activity_panel()
+        self._update_trades_panel()
+        self._update_stats_panel()
+    
+    async def _update_balance(self):
+        """Periodically update wallet balance."""
+        while self.running:
+            try:
+                balance = await wallet_manager.get_balance()
+                self.wallet_balance = balance
                 
-                self.stats["realized_pnl"] += profit
+                if self.initial_balance == 0:
+                    self.initial_balance = balance
                 
-                if profit > 0:
-                    self.stats["successful_trades"] += 1
-                    self.stats["best_trade"] = max(self.stats["best_trade"], profit)
-                else:
-                    self.stats["failed_trades"] += 1
-                    self.stats["worst_trade"] = min(self.stats["worst_trade"], profit)
+                # Update connection status
+                self.stats["connection_status"] = "🟢 Connected"
                 
-                holding["amount"] -= amount
-                if holding["amount"] <= 0:
-                    del self.token_holdings[token_address]
-        
-        if self.stats["total_trades"] > 0:
-            self.stats["win_rate"] = (self.stats["successful_trades"] / self.stats["total_trades"]) * 100
-        
-        if self.live:
-            self._update_ui()
+                # Refresh header
+                self._update_header()
+                
+            except Exception as e:
+                logger.error(f"Error updating balance: {e}")
+                self.stats["connection_status"] = "🔴 Error"
+                
+            await asyncio.sleep(5)  # Update every 5 seconds
     
     async def start(self):
         """Start the CLI UI."""
         self.running = True
         self._update_header()
         
+        # Register callbacks
         self.register_callbacks()
         
+        # Start balance update task
         asyncio.create_task(self._update_balance())
         
+        # Start live display with faster refresh
         logger.info("Starting UI live display")
         with Live(self.layout, refresh_per_second=4, screen=True) as live:
             self.live = live
             logger.info("UI live display started")
             
             while self.running:
-                await asyncio.sleep(0.25)
+                await asyncio.sleep(0.25)  # Faster update loop
     
     def stop(self):
         """Stop the CLI UI."""
@@ -577,6 +444,7 @@ class BotCLI:
         if self.live:
             self.live.stop()
         
+        # Update header to show stopped status
         self._update_header()
 
 

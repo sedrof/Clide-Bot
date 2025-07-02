@@ -156,8 +156,7 @@ async def start_bot():
 async def stop_bot():
     """Stop the bot gracefully."""
     try:
-        logger.info("="*60)
-        logger.info("Stopping Solana pump.fun sniping bot...")
+        logger.info("Stopping Solana pump.fun sniping bot")
         
         # Import components
         try:
@@ -170,40 +169,73 @@ async def stop_bot():
             from src.ui.cli import bot_cli
             from src.core.connection_manager import connection_manager
         except ImportError as e:
-            logger.warning(f"Some components could not be imported for shutdown: {e}")
+            logger.warning(f"Some components not imported during shutdown: {e}")
         
-        # Stop components in reverse order
-        components = [
-            ("UI", 'bot_cli'),
-            ("Strategy Engine", 'strategy_engine'),
-            ("Event Processor", 'event_processor'),
-            ("Wallet Tracker", 'wallet_tracker'),
-            ("Volume Analyzer", 'volume_analyzer'),
-            ("Price Tracker", 'price_tracker'),
-            ("Pump Monitor", 'pump_monitor'),
-            ("Connection Manager", 'connection_manager')
-        ]
+        # Stop strategy engine first
+        try:
+            if 'strategy_engine' in locals() and strategy_engine and hasattr(strategy_engine, 'stop'):
+                await strategy_engine.stop()
+                logger.info("✓ Strategy engine stopped")
+        except Exception as e:
+            logger.error(f"Error stopping strategy engine: {e}")
         
-        for name, var_name in components:
-            try:
-                if var_name in locals():
-                    component = locals()[var_name]
-                    if component:
-                        if var_name == 'bot_cli':
-                            component.stop()
-                        elif var_name == 'connection_manager':
-                            await component.close()
-                        else:
-                            await component.stop()
-                        logger.info(f"✓ {name} stopped")
-            except Exception as e:
-                logger.error(f"Error stopping {name}: {e}")
+        # Stop event processor
+        try:
+            if 'event_processor' in locals() and event_processor and hasattr(event_processor, 'stop'):
+                await event_processor.stop()
+                logger.info("✓ Event processor stopped")
+        except Exception as e:
+            logger.error(f"Error stopping event processor: {e}")
+        
+        # Stop monitoring components
+        try:
+            if 'pump_monitor' in locals() and pump_monitor and hasattr(pump_monitor, 'stop'):
+                await pump_monitor.stop()
+                logger.info("✓ Pump monitor stopped")
+        except Exception as e:
+            logger.error(f"Error stopping pump monitor: {e}")
+            
+        try:
+            if 'price_tracker' in locals() and price_tracker and hasattr(price_tracker, 'stop'):
+                await price_tracker.stop()
+                logger.info("✓ Price tracker stopped")
+        except Exception as e:
+            logger.error(f"Error stopping price tracker: {e}")
+            
+        try:
+            if 'volume_analyzer' in locals() and volume_analyzer and hasattr(volume_analyzer, 'stop'):
+                await volume_analyzer.stop()
+                logger.info("✓ Volume analyzer stopped")
+        except Exception as e:
+            logger.error(f"Error stopping volume analyzer: {e}")
+            
+        try:
+            if 'wallet_tracker' in locals() and wallet_tracker and hasattr(wallet_tracker, 'stop'):
+                await wallet_tracker.stop()
+                logger.info("✓ Wallet tracker stopped")
+        except Exception as e:
+            logger.error(f"Error stopping wallet tracker: {e}")
+        
+        # Stop UI
+        try:
+            if 'bot_cli' in locals() and bot_cli and hasattr(bot_cli, 'stop'):
+                bot_cli.stop()
+                logger.info("✓ UI stopped")
+        except Exception as e:
+            logger.error(f"Error stopping UI: {e}")
+        
+        # Close connections
+        try:
+            if 'connection_manager' in locals() and connection_manager and hasattr(connection_manager, 'close_all'):
+                await connection_manager.close_all()
+                logger.info("✓ Connections closed")
+        except Exception as e:
+            logger.error(f"Error closing connections: {e}")
         
         logger.info("Bot stopped successfully")
-        logger.info("="*60)
         
     except Exception as e:
-        logger.error(f"Error stopping bot: {e}", exc_info=True)
+        logger.error(f"Error during shutdown: {e}", exc_info=True)
 
 
 def signal_handler(sig, frame):

@@ -49,12 +49,12 @@ class StrategyEngine:
         self.platform_settings = {
             "Jupiter": {"slippage": 0.01},
             "Raydium": {"slippage": 0.02},
-            "Pump.fun": {"slippage": 0.05},
+            "Pump.fun": {"slippage": 0.05},  # Higher slippage for bonding curves
             "Orca": {"slippage": 0.02},
             "OKX DEX Router": {"slippage": 0.02},
             "default": {"slippage": 0.02}
         }
-    
+        
     async def initialize(self) -> None:
         """Initialize the strategy engine."""
         logger.info("Strategy engine initialized")
@@ -68,6 +68,7 @@ class StrategyEngine:
         # Start monitoring loop
         asyncio.create_task(self._monitoring_loop())
     
+        
     def register_with_wallet_tracker(self) -> None:
         """Register with wallet tracker for copy trading."""
         try:
@@ -78,12 +79,12 @@ class StrategyEngine:
         except Exception as e:
             logger.error(f"Error registering with wallet tracker: {e}")
     
-    async def start(self) -> None:
+async def start(self) -> None:
         """Start the strategy engine."""
         if self.running:
             logger.warning("Strategy engine already running")
             return
-        
+            
         self.running = True
         logger.info("Starting strategy engine")
         
@@ -108,6 +109,14 @@ class StrategyEngine:
     ) -> None:
         """
         Handle buy signal from tracked wallet - execute copy trade on SAME platform.
+        This ensures we trade on whatever platform the tracked wallet used.
+        
+        Args:
+            wallet_address: Wallet that made the buy
+            token_address: Token that was bought
+            amount_sol: Amount in SOL
+            platform: Platform where trade happened (ANY platform is supported)
+            tx_url: Transaction URL for reference
         """
         try:
             logger.info("="*60)
@@ -132,7 +141,7 @@ class StrategyEngine:
             success = await self.execute_buy(
                 token_address=token_address,
                 amount_sol=copy_amount,
-                preferred_dex=platform,
+                preferred_dex=platform,  # Use exact same platform
                 metadata={
                     "copy_from_wallet": wallet_address,
                     "original_amount": amount_sol,
@@ -173,7 +182,7 @@ class StrategyEngine:
         
         # Check minimum amount for platform
         min_amount = self.platform_minimums.get(platform, self.platform_minimums["default"])
-        if amount_sol < min_amount * 0.5:
+        if amount_sol < min_amount * 0.5:  # Allow some flexibility
             logger.info(f"Trade amount {amount_sol:.4f} below minimum {min_amount} for {platform}")
             return False
         
@@ -191,11 +200,11 @@ class StrategyEngine:
         if copy_amount < min_amount:
             copy_amount = min_amount
             logger.info(f"Adjusted copy amount to platform minimum: {copy_amount:.4f} SOL")
-        
+            
         # Don't exceed max buy amount
         if copy_amount > self.settings.max_buy_amount_sol:
             copy_amount = self.settings.max_buy_amount_sol
-        
+            
         logger.info(f"Copy trade amount: {copy_amount:.4f} SOL (original: {original_amount:.4f})")
         return copy_amount
     
@@ -206,7 +215,18 @@ class StrategyEngine:
         preferred_dex: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> bool:
-        """Execute a buy order on the specified DEX/platform."""
+        """
+        Execute a buy order on the specified DEX/platform.
+        
+        Args:
+            token_address: Token to buy
+            amount_sol: Amount in SOL to spend
+            preferred_dex: DEX/platform to use (supports ANY platform)
+            metadata: Additional metadata about the trade
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
             start_time = time.time()
             logger.info("="*60)
@@ -231,12 +251,12 @@ class StrategyEngine:
             
             logger.info(f"Using slippage: {slippage*100:.1f}%")
             
-            # Execute the transaction
+            # Execute the transaction on the specified platform
             tx_signature = await transaction_builder.execute_buy(
                 token_address=token_address,
                 amount_sol=amount_sol,
                 slippage=slippage,
-                preferred_dex=preferred_dex
+                preferred_dex=preferred_dex  # Pass the exact platform
             )
             
             execution_time = time.time() - start_time
@@ -255,14 +275,14 @@ class StrategyEngine:
                     "platform": preferred_dex or "unknown",
                     "status": "open",
                     "metadata": metadata or {},
-                    "entry_price": amount_sol
+                    "entry_price": amount_sol  # Track entry for exit strategy
                 }
                 
                 # Update position tracker
                 await position_tracker.add_position(
                     token_address=token_address,
                     amount_sol=amount_sol,
-                    amount_tokens=0,
+                    amount_tokens=0,  # Will be updated when we get token balance
                     entry_price=amount_sol,
                     entry_tx=tx_signature
                 )
@@ -282,7 +302,7 @@ class StrategyEngine:
                 logger.error(f"❌ BUY ORDER FAILED after {execution_time:.2f}s")
                 logger.error("="*60)
                 return False
-        
+                
         except Exception as e:
             logger.error(f"Error executing buy: {e}", exc_info=True)
             return False
@@ -294,7 +314,18 @@ class StrategyEngine:
         reason: str = "Manual sell",
         metadata: Optional[Dict[str, Any]] = None
     ) -> bool:
-        """Execute a sell order with the SAME exit strategy regardless of platform."""
+        """
+        Execute a sell order with the SAME exit strategy regardless of platform.
+        
+        Args:
+            token_address: Token to sell
+            amount_tokens: Amount of tokens to sell
+            reason: Reason for selling (strategy rule triggered)
+            metadata: Additional metadata
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
             start_time = time.time()
             logger.info("="*60)
@@ -303,19 +334,19 @@ class StrategyEngine:
             logger.info(f"Amount: {amount_tokens:.2f} tokens")
             logger.info(f"Reason: {reason}")
             
-            # Get position info
+            # Get position info to know which platform we bought on
             position = self.active_positions.get(token_address, {})
             platform = position.get("platform", "auto")
             
             logger.info(f"Original buy platform: {platform}")
             
-            # Get platform-specific slippage
+            # Get platform-specific slippage for selling
             slippage = self.platform_settings.get(
                 platform, 
                 self.platform_settings["default"]
             )["slippage"]
             
-            # Execute the transaction
+            # Execute the sell transaction
             tx_signature = await transaction_builder.execute_sell(
                 token_address=token_address,
                 amount_tokens=amount_tokens,
@@ -355,33 +386,45 @@ class StrategyEngine:
                 logger.error(f"❌ SELL ORDER FAILED after {execution_time:.2f}s")
                 logger.error("="*60)
                 return False
-        
+                
         except Exception as e:
             logger.error(f"Error executing sell: {e}", exc_info=True)
             return False
     
     async def evaluate_new_token(self, token_info) -> None:
-        """Evaluate a newly detected token for potential buy."""
+        """
+        Evaluate a newly detected token for potential buy.
+        
+        Args:
+            token_info: Information about the new token
+        """
         try:
             logger.info(f"Evaluating new token: {token_info.symbol}", token=token_info.address)
             
-            # Check if we have capacity
+            # Check if we have capacity for new positions
             if len(self.active_positions) >= self.max_positions:
                 logger.warning(f"Max positions reached ({self.max_positions}). Skipping {token_info.symbol} evaluation.")
                 return
             
-            # Check if token meets criteria
+            # Check if token meets basic criteria
             if self._meets_buy_criteria(token_info):
                 logger.info(f"Token {token_info.symbol} meets buy criteria. Executing buy order.", token=token_info.address)
                 await self.execute_buy_from_token_info(token_info)
             else:
                 logger.info(f"Token {token_info.symbol} does not meet buy criteria. Skipping.", token=token_info.address)
-        
+                
         except Exception as e:
             logger.error(f"Error evaluating new token {token_info.symbol}: {e}", exc_info=True)
     
     async def evaluate_price_update(self, token_address: str, price: float, price_change_percent: float) -> None:
-        """Evaluate price update for an active position."""
+        """
+        Evaluate price update for an active position.
+        
+        Args:
+            token_address: Token address
+            price: Current price in SOL
+            price_change_percent: Price change percentage
+        """
         if token_address in self.active_positions:
             position = self.active_positions[token_address]
             position['current_price'] = price
@@ -393,7 +436,13 @@ class StrategyEngine:
             )
     
     async def evaluate_volume_spike(self, token_address: str, volume_spike_ratio: float) -> None:
-        """Evaluate volume spike for potential action."""
+        """
+        Evaluate volume spike for potential action.
+        
+        Args:
+            token_address: Token address
+            volume_spike_ratio: Ratio of current volume to average
+        """
         if token_address in self.active_positions:
             position = self.active_positions[token_address]
             position['volume_spike_ratio'] = volume_spike_ratio
@@ -404,7 +453,15 @@ class StrategyEngine:
             )
     
     def _meets_buy_criteria(self, token_info) -> bool:
-        """Check if a token meets the criteria for buying."""
+        """
+        Check if a token meets the criteria for buying.
+        
+        Args:
+            token_info: Token information object
+            
+        Returns:
+            True if token meets buy criteria
+        """
         # Check market cap
         if hasattr(token_info, 'market_cap') and token_info.market_cap < self.settings.min_market_cap:
             logger.debug(f"Token {token_info.symbol} market cap too low: ${token_info.market_cap:,.2f}")
@@ -415,7 +472,7 @@ class StrategyEngine:
             logger.debug(f"Token {token_info.symbol} liquidity too low: ${token_info.liquidity:,.2f}")
             return False
         
-        # Check if already in positions
+        # Check if token already in positions
         if hasattr(token_info, 'address') and token_info.address in self.active_positions:
             logger.debug(f"Token {token_info.symbol} already in positions")
             return False
@@ -436,22 +493,25 @@ class StrategyEngine:
         )
     
     async def _monitor_positions(self) -> None:
-        """Monitor active positions for selling opportunities."""
+        """
+        Monitor active positions for selling opportunities.
+        Uses SAME exit strategy regardless of which platform we bought on.
+        """
         while self.running:
             try:
                 # Check each position
                 for token_address in list(self.active_positions.keys()):
                     position = self.active_positions[token_address]
                     
-                    # Skip if not open
+                    # Skip if position is not open
                     if position.get("status") != "open":
                         continue
                     
-                    # Get current metrics
+                    # Get current metrics from position tracker
                     try:
                         metrics = await position_tracker.get_position_metrics(token_address)
                         if metrics:
-                            # Check exit conditions
+                            # Check exit conditions (SAME for all platforms)
                             should_sell, reason = self._check_exit_conditions(position, metrics)
                             
                             if should_sell:
@@ -466,8 +526,8 @@ class StrategyEngine:
                     except Exception as e:
                         logger.debug(f"Could not get metrics for {token_address[:8]}...: {e}")
                 
-                await asyncio.sleep(5)
-            
+                await asyncio.sleep(5)  # Check every 5 seconds
+                
             except Exception as e:
                 logger.error(f"Error monitoring positions: {e}", exc_info=True)
                 await asyncio.sleep(10)
@@ -476,7 +536,9 @@ class StrategyEngine:
         """Monitor positions and market conditions."""
         while True:
             try:
-                await asyncio.sleep(30)
+                # This is a backup monitoring loop
+                await asyncio.sleep(30)  # Run less frequently
+                
             except Exception as e:
                 logger.error(f"Error in monitoring loop: {e}")
                 await asyncio.sleep(10)
@@ -486,10 +548,21 @@ class StrategyEngine:
         position: Dict[str, Any],
         metrics: Dict[str, Any]
     ) -> tuple[bool, str]:
-        """Check if position should be sold based on UNIVERSAL strategy rules."""
+        """
+        Check if position should be sold based on strategy rules.
+        SAME RULES APPLY REGARDLESS OF PLATFORM.
+        
+        Args:
+            position: Position data
+            metrics: Current position metrics
+            
+        Returns:
+            (should_sell, reason)
+        """
         gain_percent = metrics.get("gain_percent", 0)
         time_held = metrics.get("time_held_seconds", 0)
         
+        # Log current position status
         logger.debug(f"Position metrics: gain={gain_percent:.2f}%, held={time_held/60:.1f}min")
         
         # Take profit - same for all platforms
