@@ -1,131 +1,37 @@
-2025-07-01 21:17:08 - src.utils.logger - INFO - Logging initialized - Level: INFO, File: C:\Users\JJ\Desktop\Clide-Bot\logs\pump_bot.log
-2025-07-01 21:17:08 - main - INFO - ============================================================
-2025-07-01 21:17:08 - main - INFO - Starting Solana pump.fun sniping bot
-2025-07-01 21:17:08 - main - INFO - ============================================================
-2025-07-01 21:17:08 - config - INFO - Loaded settings from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\settings.json
-2025-07-01 21:17:08 - config - INFO - Loaded wallet data from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\wallet.json
-2025-07-01 21:17:08 - config - INFO - Loaded sell strategy from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\sell_strategy.yaml
-2025-07-01 21:17:08 - config - INFO - All configurations loaded successfully
-2025-07-01 21:17:08 - main - INFO - Configurations loaded successfully
-2025-07-01 21:17:09 - position_tracker - INFO - Position tracker initialized
-2025-07-01 21:17:09 - main - INFO - Initializing components...
-2025-07-01 21:17:09 - main - INFO - ✓ Strategy engine initialized
-2025-07-01 21:17:09 - main - INFO - ✓ Transaction builder initialized
-2025-07-01 21:17:09 - connection - INFO - Created 1 RPC client(s)
-2025-07-01 21:17:09 - connection - INFO - Attempting to connect to: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE
-2025-07-01 21:17:10 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:11 - connection - INFO - ✅ Successfully connected to RPC: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE
-2025-07-01 21:17:11 - main - INFO - ✓ Connection manager initialized
-2025-07-01 21:17:11 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:11 - wallet - INFO - Keypair loaded successfully | public_key=4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2
-2025-07-01 21:17:11 - wallet - INFO - Wallet manager initialized | public_key=4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2
-2025-07-01 21:17:11 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:11 - main - INFO - ✓ Wallet initialized. Balance: 0.012841 SOL
-2025-07-01 21:17:11 - wallet_tracker - INFO - Wallet tracker initialized - tracking 1 wallet(s)
-2025-07-01 21:17:11 - wallet_tracker - INFO - Using DRPC endpoint with rate limiting
-2025-07-01 21:17:11 - main - INFO - ✓ Monitoring components initialized
-2025-07-01 21:17:11 - event_processor - INFO - Event processor instance created
-2025-07-01 21:17:11 - main - INFO - ✓ Event processor initialized
-2025-07-01 21:17:11 - main - INFO - ✓ CLI UI initialized
-2025-07-01 21:17:11 - main - INFO - Registering callbacks...
-2025-07-01 21:17:11 - event_processor - INFO - Registered new token callback. Total: 1
-2025-07-01 21:17:11 - event_processor - INFO - Registered price update callback. Total: 1
-2025-07-01 21:17:11 - event_processor - INFO - Registered volume spike callback. Total: 1
-2025-07-01 21:17:11 - main - INFO - ✓ Event callbacks registered
-2025-07-01 21:17:11 - main - INFO - Starting monitoring components...
-2025-07-01 21:17:11 - pump_monitor - INFO - Starting pump.fun monitor
-2025-07-01 21:17:11 - pump_monitor - INFO - Starting targeted REST API polling for pump.fun data
-2025-07-01 21:17:11 - pump_monitor - INFO - Targeted REST API polling started
-2025-07-01 21:17:11 - main - INFO - ✓ Pump monitor started
-2025-07-01 21:17:11 - price_tracker - INFO - Starting price tracker
-2025-07-01 21:17:11 - main - INFO - ✓ Price tracker started
-2025-07-01 21:17:11 - volume_analyzer - INFO - Starting volume analyzer
-2025-07-01 21:17:11 - main - INFO - ✓ Volume analyzer started
-2025-07-01 21:17:11 - wallet_tracker - INFO - Starting wallet tracker for: ['DfyUYAcPc9dM4Mq6bLJGRTpsqPrBt5wKvtHdtwJFmZSA']
-2025-07-01 21:17:11 - wallet_tracker - INFO - Started monitoring wallet: DfyUYAcPc9dM4Mq6bLJGRTpsqPrBt5wKvtHdtwJFmZSA
-2025-07-01 21:17:11 - main - INFO - ✓ Wallet tracker started
-2025-07-01 21:17:11 - main - INFO -   Tracking 1 wallet(s): ['DfyUYAcPc9dM4Mq6bLJGRTpsqPrBt5wKvtHdtwJFmZSA']
-2025-07-01 21:17:11 - event_processor - INFO - Starting event processor
-2025-07-01 21:17:11 - pump_monitor - INFO - Registered new token callback. Total callbacks: 1
-2025-07-01 21:17:11 - event_processor - INFO - Registered new token callback with pump monitor
-2025-07-01 21:17:11 - price_tracker - INFO - Registered price update callback. Total callbacks: 1
-2025-07-01 21:17:11 - event_processor - INFO - Registered price update callback with price tracker
-2025-07-01 21:17:11 - volume_analyzer - INFO - Registered volume spike callback. Total callbacks: 1
-2025-07-01 21:17:11 - event_processor - INFO - Registered volume spike callback with volume analyzer
-2025-07-01 21:17:11 - main - INFO - ✓ Event processor started
-2025-07-01 21:17:11 - strategy - INFO - Starting strategy engine
-2025-07-01 21:17:11 - strategy - INFO - Strategy engine initialized
-2025-07-01 21:17:11 - wallet_tracker - INFO - Registered buy callback - Total: 1
-2025-07-01 21:17:11 - strategy - INFO - Registered copy trading callback with wallet tracker
-2025-07-01 21:17:11 - main - INFO - ✓ Strategy engine started
-2025-07-01 21:17:11 - main - INFO - ============================================================
-2025-07-01 21:17:11 - main - INFO - Bot started successfully! Monitoring for transactions...
-2025-07-01 21:17:11 - main - INFO - ============================================================
-2025-07-01 21:17:11 - wallet_tracker - INFO - Registered buy callback - Total: 2
-2025-07-01 21:17:11 - cli_ui - INFO - Registered wallet buy callback with UI
-2025-07-01 21:17:11 - strategy - INFO - Registered trade callback. Total callbacks: 1
-2025-07-01 21:17:11 - cli_ui - INFO - Registered trade callback with UI
-2025-07-01 21:17:11 - cli_ui - INFO - Starting UI live display
-2025-07-01 21:17:11 - cli_ui - INFO - UI live display started
-2025-07-01 21:17:11 - wallet_tracker - INFO - Monitoring wallet: DfyUYAcPc9dM4Mq6bLJGRTpsqPrBt5wKvtHdtwJFmZSA
-2025-07-01 21:17:11 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:11 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:12 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:12 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:13 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:13 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:13 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:13 - wallet_tracker - INFO - ============================================================
-2025-07-01 21:17:13 - wallet_tracker - INFO - 🟢 BUY DETECTED!
-2025-07-01 21:17:13 - wallet_tracker - INFO - Platform: Jupiter
-2025-07-01 21:17:13 - wallet_tracker - INFO - Wallet: DfyUYAcP...
-2025-07-01 21:17:13 - wallet_tracker - INFO - Token: 8Dzw2j5qfqEkoVwxwizZVzo6hsaui3hC3uqWLu1ibonk
-2025-07-01 21:17:13 - wallet_tracker - INFO - Amount: 0.000182 SOL
-2025-07-01 21:17:13 - wallet_tracker - INFO - TX: https://solscan.io/tx/5ugFPvZMxk1SSmLzBc4NkKPGf3CeQgdei6w8CSaTgKC6GefvDSLcJowzW45fTm7WtQbjD84daG5P9PRRzhQEqxzy
-2025-07-01 21:17:13 - wallet_tracker - INFO - ============================================================
-2025-07-01 21:17:13 - strategy - INFO - ============================================================
-2025-07-01 21:17:13 - strategy - INFO - 📋 COPY TRADE SIGNAL DETECTED
-2025-07-01 21:17:13 - strategy - INFO - Wallet: DfyUYAcP...
-2025-07-01 21:17:13 - strategy - INFO - Token: 8Dzw2j5qfqEkoVwxwizZVzo6hsaui3hC3uqWLu1ibonk
-2025-07-01 21:17:13 - strategy - INFO - Platform: Jupiter
-2025-07-01 21:17:13 - strategy - INFO - Amount: 0.0002 SOL
-2025-07-01 21:17:13 - strategy - INFO - TX: https://solscan.io/tx/5ugFPvZMxk1SSmLzBc4NkKPGf3CeQgdei6w8CSaTgKC6GefvDSLcJowzW45fTm7WtQbjD84daG5P9PRRzhQEqxzy
-2025-07-01 21:17:13 - strategy - INFO - Current balance: 0.0128 SOL
-2025-07-01 21:17:13 - strategy - ERROR - Error in _should_copy_trade: 'TradingConfig' object has no attribute 'min_balance_sol' | error_count=1
-2025-07-01 21:17:14 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:14 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:16 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:16 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:17 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:17 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:17 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:18 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:18 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:20 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:21 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:23 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:23 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:25 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:25 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:25 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:25 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:25 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:28 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:17:28 - main - INFO - Received shutdown signal: 2
-2025-07-01 21:17:28 - main - INFO - Stopping Solana pump.fun sniping bot
-2025-07-01 21:17:28 - strategy - INFO - Stopping strategy engine
-2025-07-01 21:17:28 - main - INFO - ✓ Strategy engine stopped
-2025-07-01 21:17:28 - event_processor - INFO - Stopping event processor
-2025-07-01 21:17:28 - main - INFO - ✓ Event processor stopped
-2025-07-01 21:17:28 - pump_monitor - INFO - Stopping pump.fun monitor
-2025-07-01 21:17:28 - main - INFO - ✓ Pump monitor stopped
-2025-07-01 21:17:28 - price_tracker - INFO - Stopping price tracker
-2025-07-01 21:17:28 - main - INFO - ✓ Price tracker stopped
-2025-07-01 21:17:28 - volume_analyzer - INFO - Stopping volume analyzer
-2025-07-01 21:17:28 - main - INFO - ✓ Volume analyzer stopped
-2025-07-01 21:17:28 - wallet_tracker - INFO - Wallet tracker stopped
-2025-07-01 21:17:28 - main - INFO - ✓ Wallet tracker stopped
-2025-07-01 21:17:28 - main - INFO - ✓ UI stopped
-2025-07-01 21:17:28 - connection - INFO - All connections closed
-2025-07-01 21:17:28 - main - INFO - ✓ Connections closed
-2025-07-01 21:17:28 - main - INFO - Bot stopped successfully
+2025-07-01 21:40:23 - src.utils.logger - INFO - Logging initialized - Level: INFO, File: C:\Users\JJ\Desktop\Clide-Bot\logs\pump_bot.log
+2025-07-01 21:40:23 - main - INFO - ============================================================
+2025-07-01 21:40:23 - main - INFO - Starting Solana pump.fun sniping bot
+2025-07-01 21:40:23 - main - INFO - ============================================================
+2025-07-01 21:40:23 - config - INFO - Loaded settings from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\settings.json
+2025-07-01 21:40:23 - config - INFO - Loaded wallet data from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\wallet.json
+2025-07-01 21:40:23 - config - INFO - Loaded sell strategy from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\sell_strategy.yaml
+2025-07-01 21:40:23 - config - INFO - All configurations loaded successfully
+2025-07-01 21:40:23 - main - INFO - Configurations loaded successfully
+2025-07-01 21:40:23 - position_tracker - INFO - Position tracker initialized
+2025-07-01 21:40:24 - main - INFO - Initializing components...
+2025-07-01 21:40:24 - main - INFO - ✓ Strategy engine initialized
+2025-07-01 21:40:24 - main - INFO - ✓ Transaction builder initialized
+2025-07-01 21:40:24 - connection - INFO - Created 1 RPC client(s)
+2025-07-01 21:40:24 - connection - INFO - Attempting to connect to: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE
+2025-07-01 21:40:25 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
+2025-07-01 21:40:25 - connection - INFO - ✅ Successfully connected to RPC: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE
+2025-07-01 21:40:25 - main - INFO - ✓ Connection manager initialized
+2025-07-01 21:40:25 - wallet - INFO - Loaded wallet: 4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2
+2025-07-01 21:40:25 - main - ERROR - Error starting bot: object NoneType can't be used in 'await' expression | exc_info=True | error_count=1
+Traceback (most recent call last):
+  File "C:\Users\JJ\Desktop\Clide-Bot\src\main.py", line 76, in start_bot
+    await wallet_manager.initialize()
+TypeError: object NoneType can't be used in 'await' expression
+2025-07-01 21:40:29 - main - INFO - Received shutdown signal: 2
+2025-07-01 21:40:29 - main - INFO - Stopping Solana pump.fun sniping bot
+2025-07-01 21:40:29 - strategy - INFO - Stopping strategy engine
+2025-07-01 21:40:29 - main - INFO - ✓ Strategy engine stopped
+2025-07-01 21:40:29 - connection - INFO - All connections closed
+2025-07-01 21:40:29 - main - INFO - ✓ Connections closed
+2025-07-01 21:40:29 - main - INFO - Bot stopped successfully
+2025-07-01 21:40:29 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-2' coro=<start_bot() done, defined at C:\Users\JJ\Desktop\Clide-Bot\src\main.py:40> exception=TypeError("object NoneType can't be used in 'await' expression")>
+Traceback (most recent call last):
+  File "C:\Users\JJ\Desktop\Clide-Bot\src\main.py", line 76, in start_bot
+    await wallet_manager.initialize()
+TypeError: object NoneType can't be used in 'await' expression

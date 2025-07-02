@@ -18,16 +18,14 @@
   "trading": {
     "max_positions": 5,
     "max_buy_amount_sol": 0.1,
-    "buy_amount_sol": 0.001,
+    "buy_amount_sol": 0.01,
     "min_balance_sol": 0.005,
     "min_market_cap": 10000,
     "min_liquidity": 5000,
     "take_profit_percentage": 50,
     "stop_loss_percentage": 25,
     "trailing_stop_percentage": 10,
-    "time_based_stop_loss_minutes": 60,
-    "copy_trade_percentage": 1.0,
-    "max_position_size": 0.1
+    "time_based_stop_loss_minutes": 60
   },
   "monitoring": {
     "new_token_check_interval": 5,

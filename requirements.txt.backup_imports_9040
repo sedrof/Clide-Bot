@@ -1,0 +1,17 @@
+# Solana dependencies
+solana>=0.30.0
+solders>=0.18.0
+anchorpy>=0.19.0
+
+# WebSocket and async dependencies
+aiohttp>=3.8.0
+websockets>=10.0
+
+# Configuration and logging
+pyyaml>=6.0
+jsonschema>=4.17.0
+
+# Utilities
+requests>=2.28.0
+dataclasses-json>=0.5.7
+rich>=13.0.0

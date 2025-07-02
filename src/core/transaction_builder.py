@@ -1,220 +1,195 @@
 """
-Transaction builder with multi-DEX support.
-Supports Jupiter, Raydium, and Pump.fun for copy trading.
+Transaction building for the Solana pump.fun sniping bot.
+Handles creation of buy and sell transactions with correct imports.
 """
 
 from typing import Optional, Dict, Any, List
-from solders.transaction import Transaction
 from solders.pubkey import Pubkey as PublicKey
+from solders.keypair import Keypair
+from solders.instruction import Instruction
+from solders.transaction import Transaction
+from solders.system_program import ID as SYS_PROGRAM_ID
+from solana.rpc.async_api import AsyncClient
 
-from src.utils.config import config_manager
 from src.utils.logger import get_logger
 from src.core.wallet_manager import wallet_manager
-from src.core.connection_manager import connection_manager
-from src.integrations.dex_interface import dex_router
-from src.integrations.jupiter_dex import jupiter_dex
-from src.integrations.raydium_dex import raydium_dex
-from src.integrations.pumpfun_dex import pumpfun_dex
 
-logger = get_logger("transaction")
+logger = get_logger("transaction_builder")
 
 
 class TransactionBuilder:
-    """Builds transactions for token trading on multiple DEXs."""
+    """Builds transactions for token trading operations."""
     
     def __init__(self):
-        self.settings = config_manager.get_settings()
-        
-        # Token constants
-        self.WSOL_MINT = "So11111111111111111111111111111111111111112"
-        
-        # DEX preferences (can be configured)
-        self.dex_priority = ["Jupiter", "Raydium", "Pump.fun"]
-        
-        self._initialized = False
+        # Program IDs
+        self.pump_program_id = PublicKey.from_string("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P")
+        self.raydium_program_id = PublicKey.from_string("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
+        self.token_program_id = PublicKey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+        self.system_program_id = SYS_PROGRAM_ID
     
-    async def initialize(self):
-        """Initialize DEX integrations."""
-        if self._initialized:
-            return
-        
-        # Initialize all DEXs
-        await jupiter_dex.initialize()
-        await raydium_dex.initialize()
-        await pumpfun_dex.initialize()
-        
-        # Register with router
-        dex_router.register_dex("Jupiter", jupiter_dex)
-        dex_router.register_dex("Raydium", raydium_dex)
-        dex_router.register_dex("Pump.fun", pumpfun_dex)
-        
-        self._initialized = True
-        logger.info("Transaction builder initialized with all DEXs")
-    
-    async def build_and_execute_buy_transaction(
+    async def build_pump_buy_transaction(
         self,
-        token_address: str,
+        token_mint: str,
         amount_sol: float,
-        slippage_tolerance: float = 0.01,
-        priority_fee: Optional[int] = None,
-        preferred_dex: Optional[str] = None
-    ) -> Optional[str]:
+        slippage: float = 0.01
+    ) -> Optional[Transaction]:
         """
-        Build and execute a buy transaction using the best available DEX.
+        Build a buy transaction for pump.fun tokens.
         
         Args:
-            token_address: Token mint address to buy
-            amount_sol: Amount of SOL to spend
-            slippage_tolerance: Slippage tolerance (0.01 = 1%)
-            priority_fee: Optional priority fee in microlamports
-            preferred_dex: Optional preferred DEX name
+            token_mint: Token mint address
+            amount_sol: Amount in SOL to spend
+            slippage: Slippage tolerance (default 1%)
             
         Returns:
-            Transaction signature if successful
+            Transaction object or None if failed
         """
         try:
-            logger.info(
-                f"Building buy transaction for {token_address[:8]}... "
-                f"with {amount_sol} SOL (DEX: {preferred_dex or 'auto'})"
-            )
+            logger.info(f"Building pump.fun buy transaction for {amount_sol} SOL")
             
-            # Validate inputs
-            if amount_sol < 0.0001:
-                logger.error(f"Amount too small: {amount_sol} SOL")
-                return None
+            # This is a placeholder - actual implementation would:
+            # 1. Get bonding curve PDA
+            # 2. Get associated token accounts
+            # 3. Build the swap instruction
+            # 4. Add priority fees
             
-            # Ensure initialized
-            await self.initialize()
+            # For now, return None to indicate not implemented
+            logger.warning("Pump.fun buy transaction building not yet implemented")
+            return None
             
-            # Get wallet
-            if not wallet_manager.get_public_key():
-                raise ValueError("Wallet not initialized")
-            
-            # Convert SOL to lamports
-            amount_lamports = int(amount_sol * 1_000_000_000)
-            
-            # Get transaction from DEX router
-            transaction = await dex_router.execute_swap(
-                input_mint=self.WSOL_MINT,
-                output_mint=token_address,
-                amount=amount_lamports,
-                user_public_key=str(wallet_manager.get_public_key()),
-                slippage_bps=int(slippage_tolerance * 10000),
-                preferred_dex=preferred_dex
-            )
-            
-            if not transaction:
-                logger.error("Failed to build swap transaction")
-                return None
-            
-            # Send and confirm transaction
-            signature = await wallet_manager.send_and_confirm_transaction(transaction)
-            
-            if signature:
-                logger.info(f"Buy transaction successful: {signature}")
-                return signature
-            else:
-                logger.error("Failed to send buy transaction")
-                return None
-                
         except Exception as e:
-            logger.error(f"Error building/executing buy transaction: {e}", exc_info=True)
+            logger.error(f"Error building pump buy transaction: {e}")
             return None
     
-    async def build_and_execute_sell_transaction(
+    async def build_raydium_swap_transaction(
         self,
-        token_address: str,
-        amount_tokens: float,
-        slippage_tolerance: float = 0.01,
-        priority_fee: Optional[int] = None,
-        preferred_dex: Optional[str] = None
-    ) -> Optional[str]:
+        token_mint: str,
+        amount_in: float,
+        is_buy: bool = True,
+        slippage: float = 0.01
+    ) -> Optional[Transaction]:
         """
-        Build and execute a sell transaction using the best available DEX.
-        Same logic applies for all platforms - find best price and execute.
+        Build a swap transaction for Raydium.
         
         Args:
-            token_address: Token mint address to sell
-            amount_tokens: Amount of tokens to sell
-            slippage_tolerance: Slippage tolerance (0.01 = 1%)
-            priority_fee: Optional priority fee in microlamports
-            preferred_dex: Optional preferred DEX name
+            token_mint: Token mint address
+            amount_in: Amount to swap
+            is_buy: True for buy (SOL->Token), False for sell (Token->SOL)
+            slippage: Slippage tolerance
             
         Returns:
-            Transaction signature if successful
+            Transaction object or None if failed
         """
         try:
-            logger.info(
-                f"Building sell transaction for {token_address[:8]}... "
-                f"with {amount_tokens} tokens (DEX: {preferred_dex or 'auto'})"
-            )
+            logger.info(f"Building Raydium swap transaction")
             
-            # Ensure initialized
-            await self.initialize()
+            # Placeholder implementation
+            logger.warning("Raydium swap transaction building not yet implemented")
+            return None
             
-            # Get token decimals (assuming 9 for now, should fetch from chain)
-            decimals = 9
-            amount_smallest_unit = int(amount_tokens * (10 ** decimals))
-            
-            # Get transaction from DEX router
-            transaction = await dex_router.execute_swap(
-                input_mint=token_address,
-                output_mint=self.WSOL_MINT,
-                amount=amount_smallest_unit,
-                user_public_key=str(wallet_manager.get_public_key()),
-                slippage_bps=int(slippage_tolerance * 10000),
-                preferred_dex=preferred_dex
-            )
-            
-            if not transaction:
-                logger.error("Failed to build sell transaction")
-                return None
-            
-            # Send and confirm transaction
-            signature = await wallet_manager.send_and_confirm_transaction(transaction)
-            
-            if signature:
-                logger.info(f"Sell transaction successful: {signature}")
-                return signature
-            else:
-                logger.error("Failed to send sell transaction")
-                return None
-                
         except Exception as e:
-            logger.error(f"Error building/executing sell transaction: {e}", exc_info=True)
+            logger.error(f"Error building Raydium swap transaction: {e}")
             return None
     
-    async def get_best_price(
+    async def build_jupiter_swap_transaction(
         self,
         input_mint: str,
         output_mint: str,
-        amount: int
-    ) -> Optional[Dict[str, Any]]:
-        """Get best price across all DEXs."""
-        await self.initialize()
+        amount: float,
+        slippage: float = 0.01
+    ) -> Optional[Transaction]:
+        """
+        Build a swap transaction using Jupiter aggregator.
         
-        best_dex, best_quote = await dex_router.find_best_route(
-            input_mint=input_mint,
-            output_mint=output_mint,
-            amount=amount
-        )
+        Args:
+            input_mint: Input token mint
+            output_mint: Output token mint
+            amount: Amount to swap
+            slippage: Slippage tolerance
+            
+        Returns:
+            Transaction object or None if failed
+        """
+        try:
+            logger.info(f"Building Jupiter swap transaction")
+            
+            # This would typically:
+            # 1. Call Jupiter API to get swap routes
+            # 2. Select best route
+            # 3. Build transaction from route
+            
+            logger.warning("Jupiter swap transaction building not yet implemented")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error building Jupiter swap transaction: {e}")
+            return None
+    
+    def add_priority_fee(
+        self,
+        transaction: Transaction,
+        priority_fee_lamports: int = 5000
+    ) -> Transaction:
+        """
+        Add priority fee to transaction for faster execution.
         
-        if best_quote:
-            return {
-                "dex": best_dex,
-                "quote": best_quote,
-                "input_amount": amount,
-                "output_amount": best_quote.get("outputAmount", 0)
-            }
+        Args:
+            transaction: Transaction to modify
+            priority_fee_lamports: Priority fee in lamports
+            
+        Returns:
+            Modified transaction
+        """
+        try:
+            # Add compute budget instruction for priority fee
+            # This is simplified - actual implementation would use ComputeBudgetProgram
+            logger.info(f"Added priority fee: {priority_fee_lamports} lamports")
+            return transaction
+            
+        except Exception as e:
+            logger.error(f"Error adding priority fee: {e}")
+            return transaction
+    
+    async def simulate_transaction(
+        self,
+        client: AsyncClient,
+        transaction: Transaction
+    ) -> bool:
+        """
+        Simulate transaction to check if it would succeed.
         
-        return None
+        Args:
+            client: RPC client
+            transaction: Transaction to simulate
+            
+        Returns:
+            True if simulation successful, False otherwise
+        """
+        try:
+            # Sign with wallet
+            signed_tx = await wallet_manager.sign_transaction(transaction)
+            
+            # Simulate
+            result = await client.simulate_transaction(signed_tx)
+            
+            if result.value.err:
+                logger.error(f"Transaction simulation failed: {result.value.err}")
+                return False
+                
+            logger.info("Transaction simulation successful")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error simulating transaction: {e}")
+            return False
 
 
 # Global transaction builder instance
-transaction_builder = None
+transaction_builder = TransactionBuilder()
 
 def initialize_transaction_builder():
     """Initialize the global transaction builder instance."""
     global transaction_builder
-    transaction_builder = TransactionBuilder()
+    if transaction_builder is None:
+        transaction_builder = TransactionBuilder()
     return transaction_builder

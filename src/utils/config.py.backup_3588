@@ -37,13 +37,8 @@ class RaydiumConfig:
 
 @dataclass
 class TradingConfig:
-    """Trading configuration with all required fields."""
     max_positions: int
     max_buy_amount_sol: float
-    min_balance_sol: float = 0.005  # Minimum balance to maintain
-    buy_amount_sol: float = 0.001   # Default buy amount (meets platform minimums)
-    copy_trade_percentage: float = 1.0  # Copy trade percentage
-    max_position_size: float = 0.1  # Maximum position size
 
 
 @dataclass
@@ -59,7 +54,6 @@ class MonitoringConfig:
 @dataclass
 class TrackingConfig:
     wallets: List[str]
-
 
 @dataclass
 class WalletConfig:
@@ -162,11 +156,7 @@ class ConfigManager:
                     "type": "object",
                     "properties": {
                         "max_positions": {"type": "number"},
-                        "max_buy_amount_sol": {"type": "number"},
-                        "min_balance_sol": {"type": "number"},
-                        "buy_amount_sol": {"type": "number"},
-                        "copy_trade_percentage": {"type": "number"},
-                        "max_position_size": {"type": "number"}
+                        "max_buy_amount_sol": {"type": "number"}
                     },
                     "required": ["max_positions", "max_buy_amount_sol"]
                 },
@@ -228,7 +218,7 @@ class ConfigManager:
             # Validate settings against schema
             validate(instance=settings_data, schema=self.settings_schema)
             
-            # Convert to BotSettings object with defaults for new fields
+            # Convert to BotSettings object
             self._settings = BotSettings(
                 solana=SolanaConfig(
                     rpc_endpoints=settings_data['solana']['rpc_endpoints'],
@@ -246,11 +236,7 @@ class ConfigManager:
                 ),
                 trading=TradingConfig(
                     max_positions=settings_data['trading']['max_positions'],
-                    max_buy_amount_sol=settings_data['trading']['max_buy_amount_sol'],
-                    min_balance_sol=settings_data['trading'].get('min_balance_sol', 0.005),
-                    buy_amount_sol=settings_data['trading'].get('buy_amount_sol', 0.001),
-                    copy_trade_percentage=settings_data['trading'].get('copy_trade_percentage', 1.0),
-                    max_position_size=settings_data['trading'].get('max_position_size', 0.1)
+                    max_buy_amount_sol=settings_data['trading']['max_buy_amount_sol']
                 ),
                 monitoring=MonitoringConfig(
                     new_token_check_interval=settings_data['monitoring']['new_token_check_interval'],
