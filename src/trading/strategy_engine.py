@@ -11,7 +11,7 @@ import time
 
 from src.utils.config import config_manager
 from src.utils.logger import get_logger
-from src.core.transaction_builder_wrapper import transaction_builder
+from src.core.transaction_builder import transaction_builder, initialize_transaction_builder
 from src.monitoring.position_tracker import position_tracker
 from src.monitoring.wallet_tracker import wallet_tracker
 from src.core.wallet_manager import wallet_manager
