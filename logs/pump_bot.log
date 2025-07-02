@@ -1,36 +1,23 @@
-2025-07-01 21:40:23 - src.utils.logger - INFO - Logging initialized - Level: INFO, File: C:\Users\JJ\Desktop\Clide-Bot\logs\pump_bot.log
-2025-07-01 21:40:23 - main - INFO - ============================================================
-2025-07-01 21:40:23 - main - INFO - Starting Solana pump.fun sniping bot
-2025-07-01 21:40:23 - main - INFO - ============================================================
-2025-07-01 21:40:23 - config - INFO - Loaded settings from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\settings.json
-2025-07-01 21:40:23 - config - INFO - Loaded wallet data from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\wallet.json
-2025-07-01 21:40:23 - config - INFO - Loaded sell strategy from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\sell_strategy.yaml
-2025-07-01 21:40:23 - config - INFO - All configurations loaded successfully
-2025-07-01 21:40:23 - main - INFO - Configurations loaded successfully
-2025-07-01 21:40:23 - position_tracker - INFO - Position tracker initialized
-2025-07-01 21:40:24 - main - INFO - Initializing components...
-2025-07-01 21:40:24 - main - INFO - ✓ Strategy engine initialized
-2025-07-01 21:40:24 - main - INFO - ✓ Transaction builder initialized
-2025-07-01 21:40:24 - connection - INFO - Created 1 RPC client(s)
-2025-07-01 21:40:24 - connection - INFO - Attempting to connect to: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE
-2025-07-01 21:40:25 - httpx - INFO - HTTP Request: POST https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE "HTTP/1.1 200 OK"
-2025-07-01 21:40:25 - connection - INFO - ✅ Successfully connected to RPC: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE
-2025-07-01 21:40:25 - main - INFO - ✓ Connection manager initialized
-2025-07-01 21:40:25 - wallet - INFO - Loaded wallet: 4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2
-2025-07-01 21:40:25 - main - ERROR - Error starting bot: object NoneType can't be used in 'await' expression | exc_info=True | error_count=1
-Traceback (most recent call last):
-  File "C:\Users\JJ\Desktop\Clide-Bot\src\main.py", line 76, in start_bot
-    await wallet_manager.initialize()
-TypeError: object NoneType can't be used in 'await' expression
-2025-07-01 21:40:29 - main - INFO - Received shutdown signal: 2
-2025-07-01 21:40:29 - main - INFO - Stopping Solana pump.fun sniping bot
-2025-07-01 21:40:29 - strategy - INFO - Stopping strategy engine
-2025-07-01 21:40:29 - main - INFO - ✓ Strategy engine stopped
-2025-07-01 21:40:29 - connection - INFO - All connections closed
-2025-07-01 21:40:29 - main - INFO - ✓ Connections closed
-2025-07-01 21:40:29 - main - INFO - Bot stopped successfully
-2025-07-01 21:40:29 - asyncio - ERROR - Task exception was never retrieved
-future: <Task finished name='Task-2' coro=<start_bot() done, defined at C:\Users\JJ\Desktop\Clide-Bot\src\main.py:40> exception=TypeError("object NoneType can't be used in 'await' expression")>
+2025-07-01 21:54:50 - src.utils.logger - INFO - Logging initialized - Level: INFO, File: C:\Users\JJ\Desktop\Clide-Bot\logs\pump_bot.log
+2025-07-01 21:54:50 - main - INFO - ============================================================
+2025-07-01 21:54:50 - main - INFO - Starting Solana pump.fun sniping bot
+2025-07-01 21:54:50 - main - INFO - ============================================================
+2025-07-01 21:54:50 - config - INFO - Loaded settings from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\settings.json
+2025-07-01 21:54:50 - config - INFO - Loaded wallet data from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\wallet.json
+2025-07-01 21:54:50 - config - INFO - Loaded sell strategy from C:\Users\JJ\Desktop\Clide-Bot\src\utils\../../config\sell_strategy.yaml
+2025-07-01 21:54:50 - config - INFO - All configurations loaded successfully
+2025-07-01 21:54:50 - main - INFO - Configurations loaded successfully
+2025-07-01 21:54:50 - position_tracker - INFO - Position tracker initialized
+2025-07-01 21:54:50 - main - INFO - Initializing components...
+2025-07-01 21:54:50 - main - INFO - ✓ Strategy engine initialized
+2025-07-01 21:54:50 - main - INFO - ✓ Transaction builder initialized
+2025-07-01 21:54:51 - connection - INFO - Created 1 RPC client(s)
+2025-07-01 21:54:51 - connection - INFO - Attempting to connect to: https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE
+2025-07-01 21:54:51 - connection - ERROR - Failed to connect to endpoint 0: 'AsyncClient' object has no attribute 'get_health' | error_count=1
+2025-07-01 21:54:51 - connection - ERROR - ❌ Could not connect to any RPC endpoint | error_count=2
+2025-07-01 21:54:51 - main - INFO - ✓ Connection manager initialized
+2025-07-01 21:54:51 - wallet - INFO - Loaded wallet: 4qwCAzrjLjGBBGdWVZt6gzdbz2Vh7gW8dxXVX9oa7nC2
+2025-07-01 21:54:51 - main - ERROR - Error starting bot: object NoneType can't be used in 'await' expression | exc_info=True | error_count=1
 Traceback (most recent call last):
   File "C:\Users\JJ\Desktop\Clide-Bot\src\main.py", line 76, in start_bot
     await wallet_manager.initialize()
