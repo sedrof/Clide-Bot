@@ -1,6 +1,6 @@
 """
-Enhanced wallet tracking with rate limiting for DRPC.
-Monitors wallets without hitting rate limits.
+Enhanced wallet tracking using RPC polling for reliability.
+Monitors wallets for trades on all DEXs without WebSocket issues.
 """
 # File Location: src/monitoring/wallet_tracker.py
 
@@ -21,9 +21,21 @@ from src.core.connection_manager import connection_manager
 logger = get_logger("wallet_tracker")
 
 
+class Transaction:
+    """Represents a parsed transaction."""
+    def __init__(self, signature: str, timestamp: float):
+        self.signature = signature
+        self.timestamp = timestamp
+        self.token_address = Optional[str]
+        self.amount_sol = 0.0
+        self.is_buy = False
+        self.platform = "Unknown"
+
+
 class WalletTracker:
     """
-    Wallet tracker with intelligent rate limiting for DRPC.
+    Reliable wallet tracker using RPC polling.
+    No WebSocket complications - just pure, working transaction detection!
     """
     
     def __init__(self):
@@ -50,24 +62,20 @@ class WalletTracker:
             "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY": "Phoenix"
         }
         
-        # RATE LIMITING SETTINGS
-        self.poll_interval = 2.0  # Poll every 2 seconds (slower to avoid rate limits)
-        self.max_signatures_per_poll = 5  # Fewer signatures per request
-        self.rate_limit_delay = 5.0  # Delay after rate limit error
-        self.max_requests_per_minute = 20  # Conservative limit for DRPC
-        self.request_times: List[float] = []
+        # Polling settings
+        self.poll_interval = 1.0  # Check every second
+        self.max_signatures_per_poll = 10
         
         # Stats
         self.stats = {
             "transactions_detected": 0,
             "buys_detected": 0,
             "errors": 0,
-            "rate_limit_hits": 0,
             "last_poll": None
         }
         
         logger.info(f"Wallet tracker initialized - tracking {len(self.tracked_wallets)} wallet(s)")
-        logger.info(f"Using DRPC endpoint with rate limiting")
+        logger.info(f"Using RPC polling for maximum reliability")
     
     async def start(self) -> None:
         """Start tracking wallets."""
@@ -103,34 +111,13 @@ class WalletTracker:
         
         logger.info("Wallet tracker stopped")
     
-    async def _check_rate_limit(self) -> None:
-        """Check and enforce rate limiting."""
-        current_time = time.time()
-        
-        # Remove requests older than 1 minute
-        self.request_times = [t for t in self.request_times if current_time - t < 60]
-        
-        # If we've made too many requests, wait
-        if len(self.request_times) >= self.max_requests_per_minute:
-            wait_time = 60 - (current_time - self.request_times[0])
-            if wait_time > 0:
-                logger.debug(f"Rate limit: waiting {wait_time:.1f}s")
-                await asyncio.sleep(wait_time)
-                self.request_times = []
-        
-        # Record this request
-        self.request_times.append(current_time)
-    
     async def _monitor_wallet(self, wallet_address: str) -> None:
-        """Monitor a wallet for transactions with rate limiting."""
+        """Monitor a wallet for transactions using RPC polling."""
         logger.info(f"Monitoring wallet: {wallet_address}")
         consecutive_errors = 0
         
         while self.running:
             try:
-                # Check rate limit before making request
-                await self._check_rate_limit()
-                
                 # Get RPC client
                 client = await connection_manager.get_rpc_client()
                 if not client:
@@ -159,13 +146,11 @@ class WalletTracker:
                             self.processed_signatures.add(signature_str)
                             
                             # Keep cache size manageable
-                            if len(self.processed_signatures) > 500:
+                            if len(self.processed_signatures) > 1000:
+                                # Keep only the 500 most recent
                                 self.processed_signatures = set(
-                                    list(self.processed_signatures)[-250:]
+                                    list(self.processed_signatures)[-500:]
                                 )
-                            
-                            # Add small delay between transaction analyses
-                            await asyncio.sleep(0.1)
                             
                             # Analyze the transaction
                             await self._analyze_transaction(
@@ -185,20 +170,12 @@ class WalletTracker:
                 break
             except Exception as e:
                 consecutive_errors += 1
-                error_msg = str(e)
+                logger.error(f"Error monitoring wallet {wallet_address}: {e}")
+                self.stats["errors"] += 1
                 
-                # Check if it's a rate limit error
-                if "429" in error_msg or "Too Many Requests" in error_msg:
-                    self.stats["rate_limit_hits"] += 1
-                    logger.warning(f"Rate limit hit! Waiting {self.rate_limit_delay}s...")
-                    await asyncio.sleep(self.rate_limit_delay)
-                else:
-                    logger.error(f"Error monitoring wallet {wallet_address}: {error_msg}")
-                    self.stats["errors"] += 1
-                    
-                    # Exponential backoff on errors
-                    wait_time = min(30, 2 ** consecutive_errors)
-                    await asyncio.sleep(wait_time)
+                # Exponential backoff on errors
+                wait_time = min(30, 2 ** consecutive_errors)
+                await asyncio.sleep(wait_time)
     
     async def _analyze_transaction(
         self, 
@@ -208,9 +185,6 @@ class WalletTracker:
     ) -> None:
         """Analyze a transaction to detect DEX trades."""
         try:
-            # Check rate limit before transaction fetch
-            await self._check_rate_limit()
-            
             # Get full transaction
             tx_response = await client.get_transaction(
                 Signature.from_string(signature),
@@ -282,14 +256,8 @@ class WalletTracker:
                         )
                         
         except Exception as e:
-            error_msg = str(e)
-            if "429" in error_msg:
-                self.stats["rate_limit_hits"] += 1
-                logger.warning(f"Rate limit hit analyzing transaction {signature[:8]}...")
-                await asyncio.sleep(self.rate_limit_delay)
-            else:
-                logger.error(f"Error analyzing transaction {signature}: {error_msg}")
-                self.stats["errors"] += 1
+            logger.error(f"Error analyzing transaction {signature}: {e}")
+            self.stats["errors"] += 1
     
     async def _parse_dex_instruction(
         self,
@@ -304,26 +272,24 @@ class WalletTracker:
             pre_balances = meta.get("preBalances", [])
             post_balances = meta.get("postBalances", [])
             
-            # Get account keys
-            account_keys = meta.get("postTokenBalances", [])
-            
-            # Look for SOL decrease (indicating a buy)
-            if pre_balances and post_balances and len(pre_balances) == len(post_balances):
-                # Check first few accounts (usually where wallet is)
-                for i in range(min(5, len(pre_balances))):
-                    sol_change = (post_balances[i] - pre_balances[i]) / 1e9
+            # Simple heuristic: if SOL decreased, it's likely a buy
+            if pre_balances and post_balances:
+                # Find wallet's account index
+                accounts = instruction.get("accounts", [])
+                wallet_index = None
+                
+                for i, account in enumerate(accounts):
+                    if account == wallet_address:
+                        wallet_index = i
+                        break
+                
+                if wallet_index is not None and wallet_index < len(pre_balances):
+                    sol_change = (post_balances[wallet_index] - pre_balances[wallet_index]) / 1e9
                     
-                    if sol_change < -0.0001:  # SOL decreased (likely a buy)
-                        # Try to find token info
-                        token_mint = "Unknown"
-                        for token_balance in account_keys:
-                            if token_balance.get("uiTokenAmount", {}).get("uiAmount", 0) > 0:
-                                token_mint = token_balance.get("mint", "Unknown")
-                                break
-                        
+                    if sol_change < -0.0001:  # SOL decreased (buy)
                         return {
                             "is_buy": True,
-                            "token_address": token_mint,
+                            "token_address": "Unknown",  # Would need more parsing
                             "amount_sol": abs(sol_change),
                             "platform": platform
                         }
@@ -332,6 +298,7 @@ class WalletTracker:
             parsed = instruction.get("parsed", {})
             if parsed and parsed.get("type") in ["swap", "swapBaseIn"]:
                 info = parsed.get("info", {})
+                # This is likely a swap
                 return {
                     "is_buy": True,
                     "token_address": info.get("mint", "Unknown"),
@@ -374,12 +341,7 @@ class WalletTracker:
     
     def get_stats(self) -> Dict[str, Any]:
         """Get tracking statistics."""
-        return {
-            **self.stats,
-            "tracked_wallets": len(self.tracked_wallets),
-            "processed_signatures": len(self.processed_signatures),
-            "request_queue_size": len(self.request_times)
-        }
+        return self.stats.copy()
 
 
 # Global wallet tracker instance

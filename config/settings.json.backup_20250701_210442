@@ -3,29 +3,21 @@
     "rpc_endpoints": [
       "https://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE"
     ],
-    "websocket_endpoint": "wss://lb.drpc.org/ogws?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE",
+    "websocket_endpoint": "wss://lb.drpc.org/ogrpc?network=solana&dkey=AnFgx_WRKUErtPzty2EXGn4b8SFRU-oR8JQVrqRhf0fE",
     "commitment": "confirmed",
     "timeout": 30
   },
-  "pump_fun": {
-    "api_endpoint": "https://api.pump.fun",
-    "websocket_endpoint": "wss://api.pump.fun/ws",
-    "program_id": "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
-  },
-  "raydium": {
-    "program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
-  },
+    "pump_fun": {
+      "api_endpoint": "https://api.pump.fun",
+      "websocket_endpoint": "wss://api.pump.fun/ws",
+      "program_id": "11111111111111111111111111111111"
+    },
+    "raydium": {
+      "program_id": "11111111111111111111111111111111"
+    },
   "trading": {
     "max_positions": 5,
-    "max_buy_amount_sol": 0.1,
-    "buy_amount_sol": 0.01,
-    "min_balance_sol": 0.005,
-    "min_market_cap": 10000,
-    "min_liquidity": 5000,
-    "take_profit_percentage": 50,
-    "stop_loss_percentage": 25,
-    "trailing_stop_percentage": 10,
-    "time_based_stop_loss_minutes": 60
+    "max_buy_amount_sol": 0.001
   },
   "monitoring": {
     "new_token_check_interval": 5,

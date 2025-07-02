@@ -1,32 +1,6 @@
-#!/usr/bin/env python3
-
-import os
-import sys
-import shutil
-from datetime import datetime
-
-def backup_file(filepath):
-    """Create a backup of the file before modifying."""
-    if os.path.exists(filepath):
-        backup_path = f"{filepath}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        shutil.copy2(filepath, backup_path)
-        print(f"📦 Backed up: {filepath}")
-
-def write_file(filepath, content):
-    """Write content to file with proper encoding."""
-    dir_path = os.path.dirname(filepath)
-    if dir_path:
-        os.makedirs(dir_path, exist_ok=True)
-    
-    with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(content)
-    print(f"✅ Fixed: {filepath}")
-
-def fix_strategy_engine_async():
-    """Fix strategy engine to handle async balance check properly."""
-    content = '''"""
-Trading strategy engine with WORKING copy trading!
-Fixed async issues - trades will execute properly now.
+"""
+Trading strategy engine with platform-specific copy trading.
+Ensures trades happen on the same platform where they were detected.
 """
 # File Location: src/trading/strategy_engine.py
 
@@ -40,14 +14,14 @@ from src.utils.logger import get_logger
 from src.core.transaction_builder import transaction_builder
 from src.monitoring.position_tracker import position_tracker
 from src.monitoring.wallet_tracker import wallet_tracker
-from src.core.wallet_manager import wallet_manager
 
 logger = get_logger("strategy")
 
 
 class StrategyEngine:
     """
-    Manages trading strategies with WORKING copy trading!
+    Manages trading strategies including entry and exit rules.
+    Supports copy trading on any platform: Jupiter, Pump.fun, Raydium, Orca, etc.
     """
     
     def __init__(self):
@@ -59,14 +33,9 @@ class StrategyEngine:
         self.active_positions: Dict[str, Any] = {}
         self.max_positions = self.settings.max_positions
         
-        # Cache balance to avoid repeated calls
-        self._cached_balance = 0.0
-        self._balance_cache_time = 0
-        self._balance_cache_duration = 10  # Cache for 10 seconds
-        
         # Minimum trade amounts by platform
         self.platform_minimums = {
-            "Jupiter": 0.001,
+            "Jupiter": 0.0001,
             "Raydium": 0.001,
             "Pump.fun": 0.01,
             "Orca": 0.001,
@@ -98,9 +67,6 @@ class StrategyEngine:
         
         # Start monitoring loop
         asyncio.create_task(self._monitoring_loop())
-        
-        # Get initial balance
-        await self._update_cached_balance()
     
     def register_with_wallet_tracker(self) -> None:
         """Register with wallet tracker for copy trading."""
@@ -132,26 +98,6 @@ class StrategyEngine:
         self.running = False
         logger.info("Stopping strategy engine")
     
-    async def _update_cached_balance(self) -> float:
-        """Update cached balance."""
-        try:
-            self._cached_balance = await wallet_manager.get_balance()
-            self._balance_cache_time = time.time()
-            return self._cached_balance
-        except Exception as e:
-            logger.error(f"Error updating balance: {e}")
-            return self._cached_balance
-    
-    async def _get_balance(self) -> float:
-        """Get wallet balance with caching."""
-        current_time = time.time()
-        
-        # Check if cache is still valid
-        if current_time - self._balance_cache_time > self._balance_cache_duration:
-            await self._update_cached_balance()
-        
-        return self._cached_balance
-    
     async def handle_tracked_wallet_buy(
         self, 
         wallet_address: str, 
@@ -161,7 +107,7 @@ class StrategyEngine:
         tx_url: str = ""
     ) -> None:
         """
-        Handle buy signal from tracked wallet - FIXED async version!
+        Handle buy signal from tracked wallet - execute copy trade on SAME platform.
         """
         try:
             logger.info("="*60)
@@ -174,8 +120,7 @@ class StrategyEngine:
                 logger.info(f"TX: {tx_url}")
             
             # Check if we should copy this trade
-            should_copy = await self._should_copy_trade(wallet_address, amount_sol, platform)
-            if not should_copy:
+            if not self._should_copy_trade(wallet_address, amount_sol, platform):
                 return
             
             # Calculate our copy trade amount
@@ -205,37 +150,34 @@ class StrategyEngine:
         except Exception as e:
             logger.error(f"Error handling tracked wallet buy: {e}", exc_info=True)
     
-    async def _should_copy_trade(self, wallet_address: str, amount_sol: float, platform: str) -> bool:
-        """Determine if we should copy this trade - ASYNC version."""
+    def _should_copy_trade(self, wallet_address: str, amount_sol: float, platform: str) -> bool:
+        """Determine if we should copy this trade."""
+        # Check wallet balance
+        from src.core.wallet_manager import wallet_manager
         try:
-            # Get current balance
-            current_balance = await self._get_balance()
+            current_balance = asyncio.get_event_loop().run_until_complete(
+                wallet_manager.get_balance()
+            )
             
-            logger.info(f"Current balance: {current_balance:.4f} SOL")
-            
-            # Check minimum balance
-            min_balance = self.settings.min_balance_sol
-            if current_balance < min_balance:
-                logger.warning(f"Insufficient balance for copy trade. Current: {current_balance:.4f} SOL, Required: {min_balance:.4f} SOL")
+            if current_balance < self.settings.min_balance_sol:
+                logger.warning(f"Insufficient balance for copy trade. Current: {current_balance:.4f} SOL, Required: {self.settings.min_balance_sol:.4f} SOL")
                 return False
-            
-            # Check if we have capacity
-            if len(self.active_positions) >= self.max_positions:
-                logger.warning(f"Max positions reached ({self.max_positions}), skipping copy trade")
-                return False
-            
-            # Check minimum amount for platform
-            min_amount = self.platform_minimums.get(platform, self.platform_minimums["default"])
-            if amount_sol < min_amount * 0.5:
-                logger.info(f"Trade amount {amount_sol:.4f} below minimum {min_amount} for {platform}")
-                return False
-            
-            logger.info(f"✅ Copy trade approved! Balance sufficient and all checks passed.")
-            return True
-            
         except Exception as e:
-            logger.error(f"Error in _should_copy_trade: {e}")
+            logger.error(f"Error checking balance: {e}")
             return False
+        
+        # Check if we have capacity
+        if len(self.active_positions) >= self.max_positions:
+            logger.warning(f"Max positions reached ({self.max_positions}), skipping copy trade")
+            return False
+        
+        # Check minimum amount for platform
+        min_amount = self.platform_minimums.get(platform, self.platform_minimums["default"])
+        if amount_sol < min_amount * 0.5:
+            logger.info(f"Trade amount {amount_sol:.4f} below minimum {min_amount} for {platform}")
+            return False
+        
+        return True
     
     def _calculate_copy_amount(self, original_amount: float, platform: str) -> float:
         """Calculate how much to copy trade based on settings."""
@@ -335,9 +277,6 @@ class StrategyEngine:
                     "platform": preferred_dex or "auto"
                 })
                 
-                # Update balance cache after successful trade
-                await self._update_cached_balance()
-                
                 return True
             else:
                 logger.error(f"❌ BUY ORDER FAILED after {execution_time:.2f}s")
@@ -410,9 +349,6 @@ class StrategyEngine:
                     "timestamp": datetime.now().isoformat(),
                     "platform": platform
                 })
-                
-                # Update balance cache after successful trade
-                await self._update_cached_balance()
                 
                 return True
             else:
@@ -611,8 +547,7 @@ class StrategyEngine:
         return {
             "active_positions": len(active_positions),
             "total_trades": total_trades,
-            "positions": active_positions,
-            "current_balance": self._cached_balance
+            "positions": active_positions
         }
 
 
@@ -624,54 +559,3 @@ def initialize_strategy_engine():
     global strategy_engine
     strategy_engine = StrategyEngine()
     return strategy_engine
-'''
-    
-    write_file('src/trading/strategy_engine.py', content)
-
-# Main execution
-if __name__ == "__main__":
-    print("="*80)
-    print("🚀 COPY TRADE FIX - Making Trading Actually Work!")
-    print("="*80)
-    print()
-    
-    if not os.path.exists('src'):
-        print("❌ Error: 'src' directory not found!")
-        print("Please run this script from your project root directory.")
-        sys.exit(1)
-    
-    print("🛠️  Applying copy trade fix...")
-    print()
-    
-    # Backup file
-    backup_file('src/trading/strategy_engine.py')
-    
-    # Apply fix
-    print("📝 Fixing strategy engine async issues...")
-    fix_strategy_engine_async()
-    
-    print()
-    print("="*80)
-    print("✅ COPY TRADE FIX COMPLETE!")
-    print("="*80)
-    print()
-    print("🎉 What's been fixed:")
-    print("  ✓ Fixed async balance check (no more event loop error)")
-    print("  ✓ Added balance caching to reduce API calls")
-    print("  ✓ Proper async/await throughout")
-    print("  ✓ Better error handling and logging")
-    print()
-    print("💡 The bot will now:")
-    print("  • Check your balance properly")
-    print("  • Execute copy trades when detected")
-    print("  • Use the same platform as the tracked wallet")
-    print("  • Apply your configured buy amounts")
-    print()
-    print("⚠️  IMPORTANT: Your balance is 0.002841 SOL")
-    print("   The minimum for Jupiter is 0.001 SOL")
-    print("   Make sure to add more SOL for reliable trading!")
-    print()
-    print("🚀 Run: python src/main.py")
-    print()
-    print("The bot is now FULLY FUNCTIONAL! 🔥")
-    print()
