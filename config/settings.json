@@ -20,8 +20,8 @@
     "max_buy_amount_sol": 0.1,
     "buy_amount_sol": 0.001,
     "min_balance_sol": 0.005,
-    "min_market_cap": 10000,
-    "min_liquidity": 5000,
+    "min_market_cap": 4000,
+    "min_liquidity": 0,
     "take_profit_percentage": 50,
     "stop_loss_percentage": 25,
     "trailing_stop_percentage": 10,
@@ -30,11 +30,11 @@
     "max_position_size": 0.1
   },
   "monitoring": {
-    "new_token_check_interval": 5,
+    "new_token_check_interval": 0.5,
     "price_check_interval": 2,
     "volume_check_interval": 10,
     "max_token_age_minutes": 60,
-    "min_market_cap": 10000,
+    "min_market_cap": 4000,
     "volume_spike_threshold": 3.0
   },
   "tracking": {
