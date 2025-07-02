@@ -1,0 +1,5 @@
+# Additional requirements for multi-DEX integration
+aiohttp>=3.9.0
+solders>=0.21.0
+solana>=0.34.0
+spl-token>=0.3.0
