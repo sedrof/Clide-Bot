@@ -1,0 +1,50 @@
+2025-08-05 00:09:18 - src.utils.logger - INFO - Logging initialized - Level: INFO, File: /Users/abdulla/Documents/nessim/Clide-Bot/logs/pump_bot_dry_run.log
+2025-08-05 00:09:18 - config - INFO - Loaded settings from /Users/abdulla/Documents/nessim/Clide-Bot/src/utils/../../config/settings.json
+2025-08-05 00:09:18 - config - INFO - Loaded wallet data from /Users/abdulla/Documents/nessim/Clide-Bot/src/utils/../../config/wallet.json
+2025-08-05 00:09:18 - config - INFO - Loaded sell strategy from /Users/abdulla/Documents/nessim/Clide-Bot/src/utils/../../config/sell_strategy.yaml
+2025-08-05 00:09:18 - config - INFO - All configurations loaded successfully
+2025-08-05 00:09:18 - main.dry_run - INFO - [DRY RUN] Configurations loaded successfully
+2025-08-05 00:09:18 - position_tracker - INFO - Position tracker initialized
+2025-08-05 00:09:18 - connection - INFO - Created 2 RPC client(s)
+2025-08-05 00:09:18 - connection - INFO - Attempting to connect to: https://api.mainnet-beta.solana.com
+2025-08-05 00:09:19 - httpx - INFO - HTTP Request: POST https://api.mainnet-beta.solana.com "HTTP/1.1 200 OK"
+2025-08-05 00:09:19 - connection - INFO - ✅ Successfully connected to RPC endpoint 0: https://api.mainnet-beta.solana.com
+2025-08-05 00:09:19 - main.dry_run - INFO - [DRY RUN] ✓ Connection manager initialized
+2025-08-05 00:09:19 - main.dry_run - INFO - [DRY RUN] Wallet manager initialized with simulated balance
+2025-08-05 00:09:19 - main.dry_run - INFO - [DRY RUN] ✓ Wallet initialized with simulated balance: 1.0 SOL
+2025-08-05 00:09:19 - main.dry_run - INFO - [DRY RUN] ✓ Pump monitor initialized
+2025-08-05 00:09:19 - main.dry_run - INFO - [DRY RUN] ✓ Price tracker initialized
+2025-08-05 00:09:19 - event_processor - INFO - Event processor instance created
+2025-08-05 00:09:19 - main.dry_run - INFO - [DRY RUN] ✓ Event processor initialized
+2025-08-05 00:09:19 - main.dry_run - INFO - [DRY RUN] Starting monitoring components...
+2025-08-05 00:09:19 - pump_monitor - INFO - Starting pump.fun monitor
+2025-08-05 00:09:19 - pump_monitor - INFO - Starting targeted REST API polling for pump.fun data
+2025-08-05 00:09:19 - pump_monitor - INFO - Targeted REST API polling started
+2025-08-05 00:09:19 - main.dry_run - INFO - [DRY RUN] ✓ Pump monitor started
+2025-08-05 00:09:19 - price_tracker - INFO - Starting price tracker
+2025-08-05 00:09:19 - main.dry_run - INFO - [DRY RUN] ✓ Price tracker started
+2025-08-05 01:43:47 - src.utils.logger - INFO - Logging initialized - Level: INFO, File: /Users/abdulla/Documents/nessim/Clide-Bot/logs/pump_bot_dry_run.log
+2025-08-05 01:43:47 - config - INFO - Loaded settings from /Users/abdulla/Documents/nessim/Clide-Bot/src/utils/../../config/settings.json
+2025-08-05 01:43:47 - config - INFO - Loaded wallet data from /Users/abdulla/Documents/nessim/Clide-Bot/src/utils/../../config/wallet.json
+2025-08-05 01:43:47 - config - INFO - Loaded sell strategy from /Users/abdulla/Documents/nessim/Clide-Bot/src/utils/../../config/sell_strategy.yaml
+2025-08-05 01:43:47 - config - INFO - All configurations loaded successfully
+2025-08-05 01:43:47 - main.dry_run - INFO - [DRY RUN] Configurations loaded successfully
+2025-08-05 01:43:48 - position_tracker - INFO - Position tracker initialized
+2025-08-05 01:43:48 - connection - INFO - Created 2 RPC client(s)
+2025-08-05 01:43:48 - connection - INFO - Attempting to connect to: https://api.mainnet-beta.solana.com
+2025-08-05 01:43:48 - httpx - INFO - HTTP Request: POST https://api.mainnet-beta.solana.com "HTTP/1.1 200 OK"
+2025-08-05 01:43:48 - connection - INFO - ✅ Successfully connected to RPC endpoint 0: https://api.mainnet-beta.solana.com
+2025-08-05 01:43:48 - main.dry_run - INFO - [DRY RUN] ✓ Connection manager initialized
+2025-08-05 01:43:48 - main.dry_run - INFO - [DRY RUN] Wallet manager initialized with simulated balance
+2025-08-05 01:43:48 - main.dry_run - INFO - [DRY RUN] ✓ Wallet initialized with simulated balance: 1.0 SOL
+2025-08-05 01:43:48 - main.dry_run - INFO - [DRY RUN] ✓ Pump monitor initialized
+2025-08-05 01:43:48 - main.dry_run - INFO - [DRY RUN] ✓ Price tracker initialized
+2025-08-05 01:43:48 - event_processor - INFO - Event processor instance created
+2025-08-05 01:43:48 - main.dry_run - INFO - [DRY RUN] ✓ Event processor initialized
+2025-08-05 01:43:48 - main.dry_run - INFO - [DRY RUN] Starting monitoring components...
+2025-08-05 01:43:48 - pump_monitor - INFO - Starting pump.fun monitor
+2025-08-05 01:43:48 - pump_monitor - INFO - Starting targeted REST API polling for pump.fun data
+2025-08-05 01:43:48 - pump_monitor - INFO - Targeted REST API polling started
+2025-08-05 01:43:48 - main.dry_run - INFO - [DRY RUN] ✓ Pump monitor started
+2025-08-05 01:43:48 - price_tracker - INFO - Starting price tracker
+2025-08-05 01:43:48 - main.dry_run - INFO - [DRY RUN] ✓ Price tracker started

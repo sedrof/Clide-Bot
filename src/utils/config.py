@@ -44,6 +44,12 @@ class TradingConfig:
     buy_amount_sol: float = 0.001   # Default buy amount (meets platform minimums)
     copy_trade_percentage: float = 1.0  # Copy trade percentage
     max_position_size: float = 0.1  # Maximum position size
+    take_profit_percentage: float = 50  # Default take profit percentage
+    stop_loss_percentage: float = 25  # Default stop loss percentage
+    min_market_cap: int = 4000  # Minimum market cap
+    min_liquidity: float = 0  # Minimum liquidity
+    trailing_stop_percentage: float = 10  # Trailing stop percentage
+    time_based_stop_loss_minutes: int = 60  # Time-based stop loss
 
 
 @dataclass
@@ -250,7 +256,13 @@ class ConfigManager:
                     min_balance_sol=settings_data['trading'].get('min_balance_sol', 0.005),
                     buy_amount_sol=settings_data['trading'].get('buy_amount_sol', 0.001),
                     copy_trade_percentage=settings_data['trading'].get('copy_trade_percentage', 1.0),
-                    max_position_size=settings_data['trading'].get('max_position_size', 0.1)
+                    max_position_size=settings_data['trading'].get('max_position_size', 0.1),
+                    take_profit_percentage=settings_data['trading'].get('take_profit_percentage', 50),
+                    stop_loss_percentage=settings_data['trading'].get('stop_loss_percentage', 25),
+                    min_market_cap=settings_data['trading'].get('min_market_cap', 4000),
+                    min_liquidity=settings_data['trading'].get('min_liquidity', 0),
+                    trailing_stop_percentage=settings_data['trading'].get('trailing_stop_percentage', 10),
+                    time_based_stop_loss_minutes=settings_data['trading'].get('time_based_stop_loss_minutes', 60)
                 ),
                 monitoring=MonitoringConfig(
                     new_token_check_interval=settings_data['monitoring']['new_token_check_interval'],
