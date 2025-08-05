@@ -76,6 +76,12 @@ jobs:
           cd /home/azureuser/pump-bot
           
           echo 'Setting up Python virtual environment...'
+          # Remove broken venv if activate script is missing
+          if [ -d venv ] && [ ! -f venv/bin/activate ]; then
+            echo 'Removing broken virtual environment...'
+            rm -rf venv
+          fi
+          
           if [ ! -d venv ]; then
             python3 -m venv venv
           fi
@@ -223,6 +229,7 @@ jobs:
           echo '🌐 Web monitor available at: http://$(curl -s ifconfig.me):8889'
         "
 
+        
     - name: Deployment Summary
       run: |
         echo "🚀 Pump.fun Bot Deployment Summary:"
