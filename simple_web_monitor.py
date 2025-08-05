@@ -301,7 +301,7 @@ class MonitorRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 def main():
     """Start the web monitor."""
-    port = 8888
+    port = int(os.getenv('WEB_MONITOR_PORT', '8888'))
     monitor = BotWebMonitor(port)
     
     # Create request handler with monitor instance

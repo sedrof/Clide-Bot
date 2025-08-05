@@ -1,0 +1,39 @@
+[Unit]
+Description=Pump.fun Bot Web Monitor
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=azureuser
+Group=azureuser
+WorkingDirectory=/home/azureuser/pump-bot
+Environment=PATH=/home/azureuser/pump-bot/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=WEB_MONITOR_PORT=8889
+EnvironmentFile=/home/azureuser/pump-bot/.env
+ExecStart=/home/azureuser/pump-bot/venv/bin/python simple_web_monitor.py
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pump-bot-web
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/azureuser/pump-bot/logs
+
+# Resource limits
+LimitNOFILE=1024
+MemoryMax=512M
+CPUQuota=30%
+
+[Install]
+WantedBy=multi-user.target

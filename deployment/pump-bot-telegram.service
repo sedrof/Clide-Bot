@@ -1,0 +1,38 @@
+[Unit]
+Description=Pump.fun Bot Telegram Controller
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=azureuser
+Group=azureuser
+WorkingDirectory=/home/azureuser/pump-bot
+Environment=PATH=/home/azureuser/pump-bot/venv/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/home/azureuser/pump-bot/.env
+ExecStart=/home/azureuser/pump-bot/venv/bin/python telegram_controller.py
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pump-bot-telegram
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/azureuser/pump-bot
+
+# Resource limits
+LimitNOFILE=1024
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

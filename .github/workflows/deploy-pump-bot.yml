@@ -1,0 +1,206 @@
+name: Deploy Pump.fun Bot to VPS
+
+on:
+  push:
+    branches:
+      - main
+      - deploy-pump-bot
+  workflow_dispatch:  # Allow manual deployment
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH Key
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        echo "$SSH_PRIVATE_KEY" > private_key
+        chmod 600 private_key
+
+    - name: Debug Deployment Info
+      env:
+        HOST: ${{ secrets.HOST }}
+        USERNAME: ${{ secrets.USERNAME }}
+      run: |
+        echo "Deploying Pump.fun Bot to $HOST as $USERNAME"
+        echo "Target directory: /home/azureuser/pump-bot/"
+        if [ -z "$HOST" ]; then
+          echo "Error: HOST is not set."
+          exit 1
+        fi
+        if [ -z "$USERNAME" ]; then
+          echo "Error: USERNAME is not set."
+          exit 1
+        fi
+
+    - name: Create deployment directory structure
+      env:
+        USERNAME: ${{ secrets.USERNAME }}
+        HOST: ${{ secrets.HOST }}
+      run: |
+        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
+          echo 'Creating pump-bot directory structure...'
+          mkdir -p /home/azureuser/pump-bot/{config,logs,venv}
+          echo 'Directory structure created successfully'
+        "
+
+    - name: Deploy Pump.fun Bot files
+      env:
+        USERNAME: ${{ secrets.USERNAME }}
+        HOST: ${{ secrets.HOST }}
+      run: |
+        echo "Syncing pump-bot files..."
+        rsync -avz --progress \
+          --exclude='venv/' \
+          --exclude='__pycache__/' \
+          --exclude='.git/' \
+          --exclude='*.pyc' \
+          --exclude='.env' \
+          --exclude='logs/*.log' \
+          --exclude='node_modules/' \
+          -e "ssh -i private_key -o StrictHostKeyChecking=no" \
+          . $USERNAME@$HOST:/home/azureuser/pump-bot/
+
+    - name: Install Python dependencies and setup environment
+      env:
+        USERNAME: ${{ secrets.USERNAME }}
+        HOST: ${{ secrets.HOST }}
+      run: |
+        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
+          cd /home/azureuser/pump-bot
+          
+          echo 'Setting up Python virtual environment...'
+          python3 -m venv venv
+          source venv/bin/activate
+          
+          echo 'Installing dependencies...'
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install python-telegram-bot requests psutil
+          
+          echo 'Setting up log directory...'
+          mkdir -p logs
+          chmod 755 logs
+          
+          echo 'Dependencies installed successfully'
+        "
+
+    - name: Setup systemd services for pump-bot
+      env:
+        USERNAME: ${{ secrets.USERNAME }}
+        HOST: ${{ secrets.HOST }}
+      run: |
+        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
+          cd /home/azureuser/pump-bot
+          
+          echo 'Setting up systemd services...'
+          
+          # Copy service files
+          sudo cp deployment/pump-bot.service /etc/systemd/system/
+          sudo cp deployment/pump-bot-telegram.service /etc/systemd/system/
+          sudo cp deployment/pump-bot-web.service /etc/systemd/system/
+          
+          # Set correct permissions
+          sudo chmod 644 /etc/systemd/system/pump-bot*.service
+          
+          # Reload systemd
+          sudo systemctl daemon-reload
+          
+          # Enable services (but don't start them yet)
+          sudo systemctl enable pump-bot-telegram
+          sudo systemctl enable pump-bot-web
+          
+          echo 'Systemd services configured successfully'
+        "
+
+    - name: Create environment file locally
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_AUTHORIZED_USERS: ${{ secrets.TELEGRAM_AUTHORIZED_USERS }}
+        DRPC_API_KEY: ${{ secrets.DRPC_API_KEY }}
+      run: |
+        echo "Creating environment configuration file..."
+        echo "TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}" > .env
+        echo "TELEGRAM_AUTHORIZED_USERS=${TELEGRAM_AUTHORIZED_USERS}" >> .env
+        echo "DRPC_API_KEY=${DRPC_API_KEY}" >> .env
+        echo "WEB_MONITOR_PORT=8889" >> .env
+        chmod 600 .env
+
+    - name: Deploy environment file and finalize setup
+      env:
+        USERNAME: ${{ secrets.USERNAME }}
+        HOST: ${{ secrets.HOST }}
+      run: |
+        echo "Copying environment file to VPS..."
+        scp -i private_key -o StrictHostKeyChecking=no .env $USERNAME@$HOST:/home/azureuser/pump-bot/.env
+        
+        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
+          cd /home/azureuser/pump-bot
+          
+          echo 'Setting secure permissions on environment file...'
+          chmod 600 .env
+          chown azureuser:azureuser .env
+          
+          echo 'Environment configuration completed successfully'
+        "
+
+    - name: Restart pump-bot services
+      env:
+        USERNAME: ${{ secrets.USERNAME }}
+        HOST: ${{ secrets.HOST }}
+      run: |
+        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
+          echo 'Restarting pump-bot services...'
+          
+          # Stop any existing services
+          sudo systemctl stop pump-bot-telegram || true
+          sudo systemctl stop pump-bot-web || true
+          sudo systemctl stop pump-bot || true
+          
+          # Start telegram controller and web monitor
+          sudo systemctl start pump-bot-telegram
+          sudo systemctl start pump-bot-web
+          
+          # Wait a moment for services to start
+          sleep 5
+          
+          # Check service status
+          echo 'Service Status:'
+          sudo systemctl status pump-bot-telegram --no-pager || true
+          sudo systemctl status pump-bot-web --no-pager || true
+          
+          echo 'Pump.fun Bot deployment completed successfully!'
+          echo 'Telegram controller should be running'
+          echo 'Web monitor available at: http://localhost:8889'
+        "
+
+    - name: Deployment Summary
+      run: |
+        echo "🚀 Pump.fun Bot Deployment Summary:"
+        echo "✅ Code deployed to /home/azureuser/pump-bot/"
+        echo "✅ Python dependencies installed"
+        echo "✅ Systemd services configured"
+        echo "✅ Environment variables set"
+        echo "✅ Telegram controller started"
+        echo "✅ Web monitor started on port 8889"
+        echo ""
+        echo "📱 Telegram Bot Commands:"
+        echo "/start - Open bot control panel"
+        echo ""
+        echo "🌐 Web Monitor:"
+        echo "http://YOUR_VPS_IP:8889"
+        echo ""
+        echo "⚙️ Available Services:"
+        echo "- pump-bot-telegram (Telegram controller)"
+        echo "- pump-bot-web (Web monitor)"
+        echo "- pump-bot (Trading bot - controlled via Telegram)"
+
+    - name: Cleanup
+      if: always()
+      run: |
+        rm -f private_key .env
