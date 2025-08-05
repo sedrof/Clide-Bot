@@ -143,7 +143,7 @@ jobs:
         pkill -f simple_web_monitor.py || true
         pkill -f 'python.*main.py' || true
         pkill -f 'python.*main_dry_run.py' || true
-        echo \"Services stopped\"
+        echo "Services stopped"
         EOF
           
           chmod +x stop_services.sh
