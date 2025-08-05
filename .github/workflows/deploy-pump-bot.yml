@@ -192,8 +192,8 @@ jobs:
         USERNAME: ${{ secrets.USERNAME }}
         HOST: ${{ secrets.HOST }}
       run: |
-        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
-          echo '🔄 Restarting pump-bot services...'
+        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST 'bash -s' << 'ENDSSH'
+          echo "🔄 Restarting pump-bot services..."
           
           # First, let's run the services directly without systemd if sudo requires password
           # Kill any existing processes
@@ -256,8 +256,8 @@ jobs:
           echo ''
           echo '🎉 Deployment completed successfully!'
           echo '📱 Telegram bot is ready for commands'
-          echo '🌐 Web monitor available at: http://$(curl -s ifconfig.me):8889'
-        "
+          echo "🌐 Web monitor available at: http://$(curl -s ifconfig.me):8889"
+ENDSSH
 
         
     - name: Deployment Summary
