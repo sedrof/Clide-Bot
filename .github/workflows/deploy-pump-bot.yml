@@ -207,15 +207,30 @@ jobs:
           
           # Start services in background
           cd /home/azureuser/pump-bot
-          source venv/bin/activate
+          
+          # Check if venv exists and is valid
+          if [ ! -f venv/bin/activate ]; then
+            echo "Virtual environment missing or broken, recreating..."
+            rm -rf venv
+            python3 -m venv venv
+            # Install dependencies in the new venv
+            source venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            pip install python-telegram-bot psutil requests aiofiles aiohttp-cors
+          else
+            source venv/bin/activate
+          fi
           
           # Start Telegram controller
           nohup python telegram_controller.py > logs/telegram_controller.log 2>&1 &
-          echo \"✅ Telegram controller started (PID: \$!)\"
+          TELEGRAM_PID=$!
+          echo "✅ Telegram controller started (PID: $TELEGRAM_PID)"
           
           # Start Web monitor
           nohup python simple_web_monitor.py > logs/web_monitor.log 2>&1 &
-          echo \"✅ Web monitor started (PID: \$!)\"
+          WEB_PID=$!
+          echo "✅ Web monitor started (PID: $WEB_PID)"
           
           # Wait for services to stabilize
           sleep 10
