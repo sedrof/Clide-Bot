@@ -109,7 +109,7 @@ jobs:
           echo 'Dependencies installed successfully'
         "
 
-    - name: Setup systemd services for pump-bot
+    - name: Setup process management scripts
       env:
         USERNAME: ${{ secrets.USERNAME }}
         HOST: ${{ secrets.HOST }}
@@ -117,31 +117,43 @@ jobs:
         ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
           cd /home/azureuser/pump-bot
           
-          echo 'Setting up systemd services...'
+          echo 'Creating process management scripts...'
           
-          # Check if deployment files exist
-          if [ ! -f deployment/pump-bot.service ]; then
-            echo 'ERROR: Service files not found in deployment folder!'
-            ls -la deployment/ || echo 'Deployment folder missing'
-            exit 1
-          fi
+          # Create start script
+          cat > start_services.sh << 'EOF'
+#!/bin/bash
+cd /home/azureuser/pump-bot
+source venv/bin/activate
+
+# Kill existing processes
+pkill -f telegram_controller.py || true
+pkill -f simple_web_monitor.py || true
+
+sleep 2
+
+# Start services
+nohup python telegram_controller.py > logs/telegram_controller.log 2>&1 &
+echo \"Telegram controller started (PID: \$!)\"
+
+nohup python simple_web_monitor.py > logs/web_monitor.log 2>&1 &
+echo \"Web monitor started (PID: \$!)\"
+EOF
           
-          # Copy service files
-          sudo cp deployment/pump-bot.service /etc/systemd/system/
-          sudo cp deployment/pump-bot-telegram.service /etc/systemd/system/
-          sudo cp deployment/pump-bot-web.service /etc/systemd/system/
+          chmod +x start_services.sh
           
-          # Set correct permissions
-          sudo chmod 644 /etc/systemd/system/pump-bot*.service
+          # Create stop script
+          cat > stop_services.sh << 'EOF'
+#!/bin/bash
+pkill -f telegram_controller.py || true
+pkill -f simple_web_monitor.py || true
+pkill -f 'python.*main.py' || true
+pkill -f 'python.*main_dry_run.py' || true
+echo \"Services stopped\"
+EOF
           
-          # Reload systemd
-          sudo systemctl daemon-reload
+          chmod +x stop_services.sh
           
-          # Enable services (but don't start them yet)
-          sudo systemctl enable pump-bot-telegram
-          sudo systemctl enable pump-bot-web
-          
-          echo 'Systemd services configured successfully'
+          echo 'Process management scripts created successfully'
         "
 
     - name: Create environment file locally
@@ -183,12 +195,27 @@ jobs:
         ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
           echo '🔄 Restarting pump-bot services...'
           
-          # Stop trading bot if running (controlled via telegram)
-          sudo systemctl stop pump-bot || true
+          # First, let's run the services directly without systemd if sudo requires password
+          # Kill any existing processes
+          pkill -f telegram_controller.py || true
+          pkill -f simple_web_monitor.py || true
+          pkill -f 'python.*main.py' || true
+          pkill -f 'python.*main_dry_run.py' || true
           
-          # Restart always-on services
-          sudo systemctl restart pump-bot-telegram
-          sudo systemctl restart pump-bot-web
+          # Give processes time to stop
+          sleep 2
+          
+          # Start services in background
+          cd /home/azureuser/pump-bot
+          source venv/bin/activate
+          
+          # Start Telegram controller
+          nohup python telegram_controller.py > logs/telegram_controller.log 2>&1 &
+          echo \"✅ Telegram controller started (PID: \$!)\"
+          
+          # Start Web monitor
+          nohup python simple_web_monitor.py > logs/web_monitor.log 2>&1 &
+          echo \"✅ Web monitor started (PID: \$!)\"
           
           # Wait for services to stabilize
           sleep 10
@@ -198,28 +225,31 @@ jobs:
           echo '📊 Service Health Check:'
           echo '========================'
           
-          # Check Telegram controller
-          if sudo systemctl is-active --quiet pump-bot-telegram; then
+          # Check if processes are running
+          if pgrep -f telegram_controller.py > /dev/null; then
             echo '✅ Telegram Controller: Running'
-            sudo journalctl -u pump-bot-telegram -n 5 --no-pager | grep -E '(Started|ERROR)' || true
+            tail -5 logs/telegram_controller.log | grep -E '(Started|Running|ERROR)' || echo 'Controller starting...'
           else
             echo '❌ Telegram Controller: Failed'
-            sudo journalctl -u pump-bot-telegram -n 10 --no-pager
+            echo 'Last logs:'
+            tail -10 logs/telegram_controller.log || echo 'No logs available'
             exit 1
           fi
           
           # Check Web Monitor
-          if sudo systemctl is-active --quiet pump-bot-web; then
+          if pgrep -f simple_web_monitor.py > /dev/null; then
             echo '✅ Web Monitor: Running on port 8889'
             # Test if web server responds
+            sleep 2
             if curl -s -o /dev/null -w '%{http_code}' http://localhost:8889 | grep -q '200'; then
               echo '✅ Web Monitor: Responding to requests'
             else
-              echo '⚠️  Web Monitor: Running but not responding'
+              echo '⚠️  Web Monitor: Starting up...'
             fi
           else
             echo '❌ Web Monitor: Failed'
-            sudo journalctl -u pump-bot-web -n 10 --no-pager
+            echo 'Last logs:'
+            tail -10 logs/web_monitor.log || echo 'No logs available'
             exit 1
           fi
           
