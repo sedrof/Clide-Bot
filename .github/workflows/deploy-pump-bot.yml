@@ -46,7 +46,7 @@ jobs:
       run: |
         ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
           echo 'Creating pump-bot directory structure...'
-          mkdir -p /home/azureuser/pump-bot/{config,logs,venv}
+          mkdir -p /home/azureuser/pump-bot/{config,logs,venv,deployment}
           echo 'Directory structure created successfully'
         "
 
@@ -100,6 +100,13 @@ jobs:
           cd /home/azureuser/pump-bot
           
           echo 'Setting up systemd services...'
+          
+          # Check if deployment files exist
+          if [ ! -f deployment/pump-bot.service ]; then
+            echo 'ERROR: Service files not found in deployment folder!'
+            ls -la deployment/ || echo 'Deployment folder missing'
+            exit 1
+          fi
           
           # Copy service files
           sudo cp deployment/pump-bot.service /etc/systemd/system/
