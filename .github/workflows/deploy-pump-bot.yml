@@ -257,7 +257,7 @@ jobs:
           echo '🎉 Deployment completed successfully!'
           echo '📱 Telegram bot is ready for commands'
           echo "🌐 Web monitor available at: http://$(curl -s ifconfig.me):8889"
-ENDSSH
+        ENDSSH
 
         
     - name: Deployment Summary
