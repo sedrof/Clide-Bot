@@ -7,7 +7,7 @@ on:
       - deploy-pump-bot
   workflow_dispatch:  # Allow manual deployment
 
-  
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -187,44 +187,25 @@ jobs:
         USERNAME: ${{ secrets.USERNAME }}
         HOST: ${{ secrets.HOST }}
       run: |
-        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST 'bash -s' << 'ENDSSH'
+        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST 'bash -s' <<'ENDSSH'
           echo "🔄 Restarting pump-bot services..."
-          
-          # First, let's run the services directly without systemd if sudo requires password
-          # Kill any existing processes
           pkill -f telegram_controller.py || true
           pkill -f simple_web_monitor.py || true
           pkill -f 'python.*main.py' || true
           pkill -f 'python.*main_dry_run.py' || true
-          
-          # Give processes time to stop
           sleep 2
-          
-          # Start services in background
           cd /home/azureuser/pump-bot
-          
-          # Use the user's local Python installation with already installed packages
           export PATH="/home/azureuser/.local/bin:$PATH"
-          
-          # Start Telegram controller using python3 directly (no venv needed since packages are in user space)
           nohup python3 telegram_controller.py > logs/telegram_controller.log 2>&1 &
           TELEGRAM_PID=$!
           echo "✅ Telegram controller started (PID: $TELEGRAM_PID)"
-          
-          # Start Web monitor
           nohup python3 simple_web_monitor.py > logs/web_monitor.log 2>&1 &
           WEB_PID=$!
           echo "✅ Web monitor started (PID: $WEB_PID)"
-          
-          # Wait for services to stabilize
           sleep 10
-          
-          # Verify services are running
           echo ''
           echo '📊 Service Health Check:'
           echo '========================'
-          
-          # Check if processes are running
           if pgrep -f telegram_controller.py > /dev/null; then
             echo '✅ Telegram Controller: Running'
             tail -5 logs/telegram_controller.log | grep -E '(Started|Running|ERROR)' || echo 'Controller starting...'
@@ -234,13 +215,11 @@ jobs:
             tail -10 logs/telegram_controller.log || echo 'No logs available'
             exit 1
           fi
-          
-          # Check Web Monitor
           if pgrep -f simple_web_monitor.py > /dev/null; then
             echo '✅ Web Monitor: Running on port 8889'
-            # Test if web server responds
             sleep 2
-            if curl -s -o /dev/null -w '%{http_code}' http://localhost:8889 | grep -q '200'; then
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8889)
+            if [ "$STATUS" = "200" ]; then
               echo '✅ Web Monitor: Responding to requests'
             else
               echo '⚠️  Web Monitor: Starting up...'
@@ -251,13 +230,13 @@ jobs:
             tail -10 logs/web_monitor.log || echo 'No logs available'
             exit 1
           fi
-          
           echo ''
           echo '🎉 Deployment completed successfully!'
           echo '📱 Telegram bot is ready for commands'
-          echo "🌐 Web monitor available at: http://$(curl -s ifconfig.me):8889"
+          # Print the external IP without command substitution
+          MYIP=$(curl -s ifconfig.me)
+          echo "🌐 Web monitor available at: http://$MYIP:8889"
         ENDSSH
-
         
     - name: Deployment Summary
       run: |
