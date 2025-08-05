@@ -121,35 +121,35 @@ jobs:
           
           # Create start script
           cat > start_services.sh << 'EOF'
-#!/bin/bash
-cd /home/azureuser/pump-bot
-source venv/bin/activate
+        #!/bin/bash
+        cd /home/azureuser/pump-bot
+        source venv/bin/activate
 
-# Kill existing processes
-pkill -f telegram_controller.py || true
-pkill -f simple_web_monitor.py || true
+        # Kill existing processes
+        pkill -f telegram_controller.py || true
+        pkill -f simple_web_monitor.py || true
 
-sleep 2
+        sleep 2
 
-# Start services
-nohup python telegram_controller.py > logs/telegram_controller.log 2>&1 &
-echo \"Telegram controller started (PID: \$!)\"
+        # Start services
+        nohup python telegram_controller.py > logs/telegram_controller.log 2>&1 &
+        echo \"Telegram controller started (PID: \$!)\"
 
-nohup python simple_web_monitor.py > logs/web_monitor.log 2>&1 &
-echo \"Web monitor started (PID: \$!)\"
-EOF
-          
-          chmod +x start_services.sh
-          
-          # Create stop script
-          cat > stop_services.sh << 'EOF'
-#!/bin/bash
-pkill -f telegram_controller.py || true
-pkill -f simple_web_monitor.py || true
-pkill -f 'python.*main.py' || true
-pkill -f 'python.*main_dry_run.py' || true
-echo \"Services stopped\"
-EOF
+        nohup python simple_web_monitor.py > logs/web_monitor.log 2>&1 &
+        echo \"Web monitor started (PID: \$!)\"
+        EOF
+                  
+                  chmod +x start_services.sh
+                  
+                  # Create stop script
+                  cat > stop_services.sh << 'EOF'
+        #!/bin/bash
+        pkill -f telegram_controller.py || true
+        pkill -f simple_web_monitor.py || true
+        pkill -f 'python.*main.py' || true
+        pkill -f 'python.*main_dry_run.py' || true
+        echo \"Services stopped\"
+        EOF
           
           chmod +x stop_services.sh
           
