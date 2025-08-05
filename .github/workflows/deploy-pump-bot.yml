@@ -118,7 +118,6 @@ jobs:
           echo 'Systemd services configured successfully'
         "
 
-        
     - name: Create environment file locally
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
