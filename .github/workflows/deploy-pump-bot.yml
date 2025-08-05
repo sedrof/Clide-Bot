@@ -7,6 +7,7 @@ on:
       - deploy-pump-bot
   workflow_dispatch:  # Allow manual deployment
 
+  
 jobs:
   deploy:
     runs-on: ubuntu-latest
