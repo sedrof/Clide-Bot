@@ -75,32 +75,26 @@ jobs:
         ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
           cd /home/azureuser/pump-bot
           
-          echo 'Setting up Python virtual environment...'
-          # Remove broken venv if activate script is missing
-          if [ -d venv ] && [ ! -f venv/bin/activate ]; then
-            echo 'Removing broken virtual environment...'
-            rm -rf venv
-          fi
+          echo 'Installing Python dependencies in user space...'
+          export PATH=\"/home/azureuser/.local/bin:\$PATH\"
           
-          if [ ! -d venv ]; then
-            python3 -m venv venv
-          fi
-          
-          source venv/bin/activate
+          # Install pip if not available
+          which pip3 || python3 -m pip install --user --upgrade pip
           
           echo 'Installing dependencies...'
-          pip install --upgrade pip wheel setuptools
+          # Install using python3 -m pip to ensure we use the right Python
+          python3 -m pip install --user --upgrade pip wheel setuptools
           
-          # Install main requirements
-          pip install -r requirements.txt
+          # Install main requirements (skip those that fail)
+          python3 -m pip install --user solana solders aiohttp websockets python-dateutil || true
           
           # Install additional dependencies for telegram bot and monitoring
-          pip install python-telegram-bot psutil requests aiofiles aiohttp-cors
+          python3 -m pip install --user python-telegram-bot psutil requests aiofiles aiohttp-cors
           
           # Verify critical imports
-          python -c 'import telegram; print(\"✓ telegram module OK\")'
-          python -c 'import psutil; print(\"✓ psutil module OK\")'
-          python -c 'import aiofiles; print(\"✓ aiofiles module OK\")'
+          python3 -c 'import telegram; print(\"✓ telegram module OK\")'
+          python3 -c 'import psutil; print(\"✓ psutil module OK\")'
+          python3 -c 'import aiofiles; print(\"✓ aiofiles module OK\")'
           
           echo 'Setting up directories...'
           mkdir -p logs
@@ -123,7 +117,7 @@ jobs:
           cat > start_services.sh << 'EOF'
         #!/bin/bash
         cd /home/azureuser/pump-bot
-        source venv/bin/activate
+        export PATH="/home/azureuser/.local/bin:$PATH"
 
         # Kill existing processes
         pkill -f telegram_controller.py || true
@@ -132,11 +126,11 @@ jobs:
         sleep 2
 
         # Start services
-        nohup python telegram_controller.py > logs/telegram_controller.log 2>&1 &
-        echo \"Telegram controller started (PID: \$!)\"
+        nohup python3 telegram_controller.py > logs/telegram_controller.log 2>&1 &
+        echo "Telegram controller started (PID: $!)"
 
-        nohup python simple_web_monitor.py > logs/web_monitor.log 2>&1 &
-        echo \"Web monitor started (PID: \$!)\"
+        nohup python3 simple_web_monitor.py > logs/web_monitor.log 2>&1 &
+        echo "Web monitor started (PID: $!)"
         EOF
                   
                   chmod +x start_services.sh
@@ -208,27 +202,16 @@ jobs:
           # Start services in background
           cd /home/azureuser/pump-bot
           
-          # Check if venv exists and is valid
-          if [ ! -f venv/bin/activate ]; then
-            echo "Virtual environment missing or broken, recreating..."
-            rm -rf venv
-            python3 -m venv venv
-            # Install dependencies in the new venv
-            source venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-            pip install python-telegram-bot psutil requests aiofiles aiohttp-cors
-          else
-            source venv/bin/activate
-          fi
+          # Use the user's local Python installation with already installed packages
+          export PATH="/home/azureuser/.local/bin:$PATH"
           
-          # Start Telegram controller
-          nohup python telegram_controller.py > logs/telegram_controller.log 2>&1 &
+          # Start Telegram controller using python3 directly (no venv needed since packages are in user space)
+          nohup python3 telegram_controller.py > logs/telegram_controller.log 2>&1 &
           TELEGRAM_PID=$!
           echo "✅ Telegram controller started (PID: $TELEGRAM_PID)"
           
           # Start Web monitor
-          nohup python simple_web_monitor.py > logs/web_monitor.log 2>&1 &
+          nohup python3 simple_web_monitor.py > logs/web_monitor.log 2>&1 &
           WEB_PID=$!
           echo "✅ Web monitor started (PID: $WEB_PID)"
           
