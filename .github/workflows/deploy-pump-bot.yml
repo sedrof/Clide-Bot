@@ -76,15 +76,27 @@ jobs:
           cd /home/azureuser/pump-bot
           
           echo 'Setting up Python virtual environment...'
-          python3 -m venv venv
+          if [ ! -d venv ]; then
+            python3 -m venv venv
+          fi
+          
           source venv/bin/activate
           
           echo 'Installing dependencies...'
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install python-telegram-bot requests psutil
+          pip install --upgrade pip wheel setuptools
           
-          echo 'Setting up log directory...'
+          # Install main requirements
+          pip install -r requirements.txt
+          
+          # Install additional dependencies for telegram bot and monitoring
+          pip install python-telegram-bot psutil requests aiofiles aiohttp-cors
+          
+          # Verify critical imports
+          python -c 'import telegram; print(\"✓ telegram module OK\")'
+          python -c 'import psutil; print(\"✓ psutil module OK\")'
+          python -c 'import aiofiles; print(\"✓ aiofiles module OK\")'
+          
+          echo 'Setting up directories...'
           mkdir -p logs
           chmod 755 logs
           
@@ -157,34 +169,58 @@ jobs:
           echo 'Environment configuration completed successfully'
         "
 
-    - name: Restart pump-bot services
+    - name: Restart and verify pump-bot services
       env:
         USERNAME: ${{ secrets.USERNAME }}
         HOST: ${{ secrets.HOST }}
       run: |
         ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
-          echo 'Restarting pump-bot services...'
+          echo '🔄 Restarting pump-bot services...'
           
-          # Stop any existing services
-          sudo systemctl stop pump-bot-telegram || true
-          sudo systemctl stop pump-bot-web || true
+          # Stop trading bot if running (controlled via telegram)
           sudo systemctl stop pump-bot || true
           
-          # Start telegram controller and web monitor
-          sudo systemctl start pump-bot-telegram
-          sudo systemctl start pump-bot-web
+          # Restart always-on services
+          sudo systemctl restart pump-bot-telegram
+          sudo systemctl restart pump-bot-web
           
-          # Wait a moment for services to start
-          sleep 5
+          # Wait for services to stabilize
+          sleep 10
           
-          # Check service status
-          echo 'Service Status:'
-          sudo systemctl status pump-bot-telegram --no-pager || true
-          sudo systemctl status pump-bot-web --no-pager || true
+          # Verify services are running
+          echo ''
+          echo '📊 Service Health Check:'
+          echo '========================'
           
-          echo 'Pump.fun Bot deployment completed successfully!'
-          echo 'Telegram controller should be running'
-          echo 'Web monitor available at: http://localhost:8889'
+          # Check Telegram controller
+          if sudo systemctl is-active --quiet pump-bot-telegram; then
+            echo '✅ Telegram Controller: Running'
+            sudo journalctl -u pump-bot-telegram -n 5 --no-pager | grep -E '(Started|ERROR)' || true
+          else
+            echo '❌ Telegram Controller: Failed'
+            sudo journalctl -u pump-bot-telegram -n 10 --no-pager
+            exit 1
+          fi
+          
+          # Check Web Monitor
+          if sudo systemctl is-active --quiet pump-bot-web; then
+            echo '✅ Web Monitor: Running on port 8889'
+            # Test if web server responds
+            if curl -s -o /dev/null -w '%{http_code}' http://localhost:8889 | grep -q '200'; then
+              echo '✅ Web Monitor: Responding to requests'
+            else
+              echo '⚠️  Web Monitor: Running but not responding'
+            fi
+          else
+            echo '❌ Web Monitor: Failed'
+            sudo journalctl -u pump-bot-web -n 10 --no-pager
+            exit 1
+          fi
+          
+          echo ''
+          echo '🎉 Deployment completed successfully!'
+          echo '📱 Telegram bot is ready for commands'
+          echo '🌐 Web monitor available at: http://$(curl -s ifconfig.me):8889'
         "
 
     - name: Deployment Summary
