@@ -65,7 +65,7 @@ jobs:
         USERNAME: ${{ secrets.USERNAME }}
         HOST: ${{ secrets.HOST }}
       run: |
-          ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
+        ssh -i private_key -o StrictHostKeyChecking=no $USERNAME@$HOST "
           cd /home/azureuser/pump-bot
           
           echo 'Installing Python dependencies in user space...'
