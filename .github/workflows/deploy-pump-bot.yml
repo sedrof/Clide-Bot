@@ -66,7 +66,11 @@ jobs:
           --exclude "logs/*.log" \
           --exclude "node_modules/" \
           -e "ssh -i private_key -o StrictHostKeyChecking=no" \
-          . "$USERNAME@$HOST:/home/azureuser/pump-bot/"
+          . "${USERNAME}@${HOST}:/home/azureuser/pump-bot/"
+        if [ $? -ne 0 ]; then
+          echo "rsync failed with exit code $?"
+          exit 1
+        fi
 
         - name: Install Python dependencies and setup environment
         env:
