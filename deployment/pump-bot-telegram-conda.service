@@ -1,5 +1,5 @@
 [Unit]
-Description=Pump.fun Bot Telegram Controller
+Description=Pump.fun Bot Telegram Controller (Conda)
 After=network.target
 Wants=network-online.target
 
@@ -8,9 +8,10 @@ Type=simple
 User=azureuser
 Group=azureuser
 WorkingDirectory=/home/azureuser/pump-bot
-Environment=PATH=/home/azureuser/pump-bot/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment="PATH=/home/azureuser/miniconda3/envs/myenv39/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="CONDA_PREFIX=/home/azureuser/miniconda3/envs/myenv39"
 EnvironmentFile=/home/azureuser/pump-bot/.env
-ExecStart=/home/azureuser/pump-bot/venv/bin/python telegram_controller.py
+ExecStart=/home/azureuser/miniconda3/envs/myenv39/bin/python telegram_controller.py
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5

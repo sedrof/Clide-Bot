@@ -1,5 +1,5 @@
 [Unit]
-Description=Pump.fun Bot Web Monitor
+Description=Pump.fun Bot Web Monitor (Conda)
 After=network.target
 Wants=network-online.target
 
@@ -8,10 +8,10 @@ Type=simple
 User=azureuser
 Group=azureuser
 WorkingDirectory=/home/azureuser/pump-bot
-Environment=PATH=/home/azureuser/pump-bot/venv/bin:/usr/local/bin:/usr/bin:/bin
-Environment=WEB_MONITOR_PORT=8889
+Environment="PATH=/home/azureuser/miniconda3/envs/myenv39/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="CONDA_PREFIX=/home/azureuser/miniconda3/envs/myenv39"
 EnvironmentFile=/home/azureuser/pump-bot/.env
-ExecStart=/home/azureuser/pump-bot/venv/bin/python simple_web_monitor.py
+ExecStart=/home/azureuser/miniconda3/envs/myenv39/bin/python web_monitor.py
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5
@@ -28,11 +28,11 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/azureuser/pump-bot/logs
+ReadWritePaths=/home/azureuser/pump-bot
 
 # Resource limits
 LimitNOFILE=1024
-MemoryMax=512M
+MemoryMax=256M
 CPUQuota=30%
 
 [Install]
