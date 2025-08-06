@@ -14,7 +14,8 @@ echo "Installing dependencies..."
 python3 -m pip install --user --upgrade pip wheel setuptools
 
 # Install main requirements (skip those that fail)
-python3 -m pip install --user solana solders aiohttp websockets python-dateutil || true
+# Skip solana/solders due to Python 3.8 compatibility issues
+python3 -m pip install --user aiohttp websockets python-dateutil || true
 
 # Install additional dependencies for telegram bot and monitoring
 python3 -m pip install --user python-telegram-bot psutil requests aiofiles aiohttp-cors
