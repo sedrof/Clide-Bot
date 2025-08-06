@@ -134,9 +134,9 @@ class BotController:
             balance = await self.get_wallet_balance(wallet_data["public_key"])
             status_text += f"\n💰 *Wallet:*\n"
             status_text += f"🔹 Balance: {balance:.6f} SOL\n"
-            status_text += f"🔹 Address: `{wallet_data['public_key'][:8]}...{wallet_data['public_key'][-8:]}`\n"
+            status_text += f"🔹 Address: {wallet_data['public_key'][:8]}...{wallet_data['public_key'][-8:]}\n"
         except:
-            status_text += f"\n💰 *Wallet:* Error reading\n"
+            status_text += f"\n💰 Wallet: Error reading\n"
             
         status_text += f"\n⏰ Updated: {datetime.now().strftime('%H:%M:%S')}"
         
@@ -181,7 +181,7 @@ class BotController:
                 f"📊 Mode: {mode.title()}\n"
                 f"🌐 Web Monitor: http://localhost:8889\n"
                 f"⏰ Started: {datetime.now().strftime('%H:%M:%S')}\n\n"
-                f"{'⚠️ *Dry Run Mode* - No real trades' if dry_run else '💰 *Production Mode* - Real money!'}",
+                f"{'⚠️ Dry Run Mode - No real trades' if dry_run else '💰 Production Mode - Real money!'}",
                 parse_mode='Markdown'
             )
             
