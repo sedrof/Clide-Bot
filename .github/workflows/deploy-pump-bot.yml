@@ -40,13 +40,13 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_AUTHORIZED_USERS: ${{ secrets.TELEGRAM_AUTHORIZED_USERS }}
         DRPC_API_KEY: ${{ secrets.DRPC_API_KEY }}
+        USERNAME: ${{ secrets.USERNAME }}
+        HOST: ${{ secrets.HOST }}
       run: |
-        cat > .env << EOF
-        TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-        TELEGRAM_AUTHORIZED_USERS=${TELEGRAM_AUTHORIZED_USERS}
-        DRPC_API_KEY=${DRPC_API_KEY}
-        WEB_MONITOR_PORT=8889
-        EOF
+        echo "TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}" > .env
+        echo "TELEGRAM_AUTHORIZED_USERS=${TELEGRAM_AUTHORIZED_USERS}" >> .env
+        echo "DRPC_API_KEY=${DRPC_API_KEY}" >> .env
+        echo "WEB_MONITOR_PORT=8889" >> .env
         
         # Copy env file
         scp -i private_key -o StrictHostKeyChecking=no .env $USERNAME@$HOST:/home/azureuser/pump-bot/.env
