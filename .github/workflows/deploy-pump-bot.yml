@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - deploy-pump-bot
-  workflow_dispatch:  # Allow manual deployment
+  workflow_dispatch:
 
 
 jobs:
